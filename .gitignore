@@ -1,11 +1,16 @@
 # Prerequisites
 *.d
+*.zip
+.vscode/ffmpeg/in
+.vscode/ffmpeg/out
 
 # Object files
 *.o
 *.ko
-*.obj
 *.elf
+game.iso
+game.bin
+game.cue
 
 # Linker output
 *.ilk
