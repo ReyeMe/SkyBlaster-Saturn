@@ -13,7 +13,7 @@
  *  @param player Player entity
  *  @param forwardMovement Amount the player moves forward in one frame
  */
-void PlayerIntUpdateMovementThrust(Player * player, jo_fixed forwardMovement)
+void PlayerIntUpdateMovementThrust(Player *player, jo_fixed forwardMovement)
 {
     if (player->Pos.x + forwardMovement <= PLAYER_AREA_X_POS &&
         player->Pos.x + forwardMovement >= PLAYER_AREA_X_NEG)
@@ -89,7 +89,7 @@ void PlayerIntUpdateMovementThrust(Player * player, jo_fixed forwardMovement)
  *  @param player Player entity
  *  @param forwardMovement Amount the player moves to the side in one frame
  */
-void PlayerIntUpdateMovementSide(Player * player, jo_fixed sideMovement)
+void PlayerIntUpdateMovementSide(Player *player, jo_fixed sideMovement)
 {
     if (player->Pos.y + sideMovement >= PLAYER_AREA_Y_NEG &&
         player->Pos.y + sideMovement <= PLAYER_AREA_Y_POS)
@@ -105,9 +105,9 @@ void PlayerIntUpdateMovementSide(Player * player, jo_fixed sideMovement)
 
             // Apply new velocity
             player->Velocity.y += sideMovement;
-            player->TiltAngle += sideMovement < 0 ? 1: -1;
+            player->TiltAngle += sideMovement < 0 ? 1 : -1;
         }
-        else 
+        else
         {
             if ((player->Velocity.y > 0 && player->Velocity.y - PLAYER_VELOCITY_DRAG < 0) ||
                 (player->Velocity.y < 0 && player->Velocity.y + PLAYER_VELOCITY_DRAG > 0))
@@ -163,7 +163,7 @@ void PlayerIntUpdateMovementSide(Player * player, jo_fixed sideMovement)
 // Public
 // -------------------------------------
 
-void PlayerInititalize(Player * player) 
+void PlayerInititalize(Player *player)
 {
     player->Velocity.x = 0;
     player->Velocity.y = 0;
@@ -179,7 +179,7 @@ void PlayerInititalize(Player * player)
     player->Lives = 2;
     player->Bombs = 2;
     player->HurtProtect = true;
-    
+
     ScoreInitialize(&player->Score);
 
     for (int action = 0; action < PlayerActionCount - 1; action++)
@@ -188,7 +188,7 @@ void PlayerInititalize(Player * player)
     }
 }
 
-void PlayerDraw(Player * player, jo_3d_mesh * mesh)
+void PlayerDraw(Player *player, jo_3d_mesh *mesh)
 {
     static int counter = 0;
     static bool lastStatus = false;
@@ -196,7 +196,7 @@ void PlayerDraw(Player * player, jo_3d_mesh * mesh)
     if ((counter > 20 && player->HurtProtect) || (!player->HurtProtect && !lastStatus))
     {
         counter = 0;
-        
+
         for (int i = 0; i < PLAYER_MESH_COUNT; i++)
         {
             jo_3d_set_mesh_screen_doors(&mesh[i], lastStatus);
@@ -206,25 +206,27 @@ void PlayerDraw(Player * player, jo_3d_mesh * mesh)
     }
 
     jo_3d_push_matrix();
-	{
+    {
         // maximal Y range (x transform) -50; minimal Y range (x transform) -10
         // ship X range back 40 (y transform)
         jo_3d_translate_matrix_fixed(player->Pos.x, player->Pos.y, 0);
-        
-        if (player->TiltAngle != 0) jo_3d_rotate_matrix_x(player->TiltAngle);
-        if (player->PitchAngle != 0) jo_3d_rotate_matrix_y(player->PitchAngle);
+
+        if (player->TiltAngle != 0)
+            jo_3d_rotate_matrix_x(player->TiltAngle);
+        if (player->PitchAngle != 0)
+            jo_3d_rotate_matrix_y(player->PitchAngle);
 
         for (int i = 0; i < PLAYER_MESH_COUNT; i++)
         {
             jo_3d_mesh_draw(&mesh[i]);
         }
-	}
-	jo_3d_pop_matrix();
+    }
+    jo_3d_pop_matrix();
 
     counter++;
 }
 
-PlayerActions PlayerUpdate(Player * player, int inputDeviceId)
+PlayerActions PlayerUpdate(Player *player, int inputDeviceId)
 {
     PlayerActions action = PlayerActionNone;
 
@@ -281,7 +283,7 @@ PlayerActions PlayerUpdate(Player * player, int inputDeviceId)
         // Update movement
         PlayerIntUpdateMovementSide(player, sideMovement);
         PlayerIntUpdateMovementThrust(player, forwardMovement);
-        
+
         // Clamp side movement animation
         if (player->TiltAngle >= PLAYER_MAX_TILT)
         {

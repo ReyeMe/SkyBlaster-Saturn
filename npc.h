@@ -29,7 +29,7 @@ typedef struct _Npc
 
     /* Enemy type */
     NpcTypes Type;
-    
+
     /* Current NPC life time */
     int LifeTime;
 } Npc;
@@ -48,7 +48,6 @@ typedef struct
     int Frame;
 } NpcExplosion;
 
-
 /** @brief Initialize NPC data
  */
 void NpcInitialize();
@@ -56,14 +55,14 @@ void NpcInitialize();
 /** @brief Spawn explosion at specified location
  *  @param pos Explosion position
  */
-void NpcSpawnExplosion(const jo_pos3D_fixed * pos);
+void NpcSpawnExplosion(const jo_pos3D_fixed *pos);
 
 /** @brief Create NPC
  *  @param type Type of npc to create
  *  @param pos Npc position
  *  @return Created npc data
  */
-Npc * NpcCreate(const NpcTypes type, const jo_pos3D_fixed * pos);
+Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos);
 
 /** @brief Clear all NPCs
  */
@@ -79,7 +78,7 @@ int NpcDestroyAll();
  *  @param range Destruction range
  *  @return How much score player gained
  */
-int NpcDestroyAllInRange(const jo_pos3D_fixed * pos, const jo_fixed range);
+int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range);
 
 /** @brief Update all explosions that are on screen
  */
@@ -90,7 +89,7 @@ void NpcUpdateExplosions();
  *  @param PlayerHitCallback What to do if player was hit
  *  @return How much score player gained
  */
-int NpcUpdate(Player * player, void (*PlayerHitCallback)());
+int NpcUpdate(Player *player, void (*PlayerHitCallback)());
 
 /** @brief Draw all available NPCs (including explosion effects)
  */

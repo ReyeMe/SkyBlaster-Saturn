@@ -8,9 +8,9 @@
 #define PLAYER_SPAWN_X (9830400)
 #define PLAYER_SPAWN_Y (0)
 #define PLAYER_AREA_X_NEG (-9830400) // 150.00
-#define PLAYER_AREA_X_POS (9830400) // 150.00
+#define PLAYER_AREA_X_POS (9830400)  // 150.00
 #define PLAYER_AREA_Y_NEG (-5242880) // 80.00
-#define PLAYER_AREA_Y_POS (5242880) // 80.00
+#define PLAYER_AREA_Y_POS (5242880)  // 80.00
 
 // -------------------------------------
 // Player movement
@@ -57,7 +57,7 @@ typedef enum
 
 /** @brief Player entity data
  */
-typedef struct 
+typedef struct
 {
     /* Current player position */
     jo_pos3D_fixed Pos;
@@ -93,19 +93,19 @@ typedef struct
 /** @brief Initialize player entity data
  *  @param player Player entity data
  */
-void PlayerInititalize(Player * player);
+void PlayerInititalize(Player *player);
 
 /** @brief Draw player entity
  *  @param player Player entity data
  *  @param mesh Player mesh
  */
-void PlayerDraw(Player * player, jo_3d_mesh * mesh);
+void PlayerDraw(Player *player, jo_3d_mesh *mesh);
 
 /** @brief Process controller input for player and player logic
  *  @param player player entity data
  *  @param inputDeviceId ID of a controller to use
  *  @return Player action
  */
-PlayerActions PlayerUpdate(Player * player, int inputDeviceId);
+PlayerActions PlayerUpdate(Player *player, int inputDeviceId);
 
 #endif

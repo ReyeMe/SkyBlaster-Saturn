@@ -4,7 +4,7 @@
 #define BULLET_SPAWN_AREA_X (-13107200)
 #define BULLET_DESPAWN_AREA_X (13107200)
 #define BULLET_DESPAWN_AREA_Y_NEG (-6881280) // 120.00
-#define BULLET_DESPAWN_AREA_Y_POS (6881280) // 120.00
+#define BULLET_DESPAWN_AREA_Y_POS (6881280)  // 120.00
 
 #define BULLET_POS_Z JO_FIXED_1
 #define BULLET_SPEED (400000)
@@ -44,12 +44,12 @@ void BulletLoadAssets();
 /** @brief Draw single bullet
  *  @param bullet Bullet data
  */
-void BulletDraw(Bullet * bullet);
+void BulletDraw(Bullet *bullet);
 
 /** @brief Update single bullet
  *  @param bullet Bullet data
  *  @return True if bullet is to be destroyed
  */
-bool BulletUpdate(Bullet * Bullet);
+bool BulletUpdate(Bullet *Bullet);
 
 #endif

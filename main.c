@@ -17,8 +17,8 @@
 void MenuCreateMain(bool backButton);
 
 /* Music stuff */
-#define LWRAM	(2097152)
-void * loading_system_scratch_buffer = (void*)LWRAM;
+#define LWRAM (2097152)
+void *loading_system_scratch_buffer = (void *)LWRAM;
 int snd_adx = 0;
 #define MENU_MUSIC "MENU.ADX"
 #define GAME_MUSIC "GAME.ADX"
@@ -27,10 +27,10 @@ int snd_adx = 0;
 static jo_camera camera;
 
 /* Player 3D mesh */
-static jo_3d_mesh * PlayerMesh;
+static jo_3d_mesh *PlayerMesh;
 
 /* Explosion 3D mesh */
-static jo_3d_mesh * ExplosionMesh;
+static jo_3d_mesh *ExplosionMesh;
 
 /* Player entity data */
 static Player PlayerEntity;
@@ -54,7 +54,7 @@ static int CurrentLevel = 0;
 static int CurrentLevelTitleTick = 0;
 
 /* Logo mesh collection */
-static jo_3d_mesh * Logo;
+static jo_3d_mesh *Logo;
 
 /* Logo mesh size */
 static int LogoSize;
@@ -121,14 +121,14 @@ void MenuCredits(bool backButton)
         IsInGame = false;
         IsPaused = false;
         WidgetsClearAll();
-        WidgetsCreateLabel(0,18, "Coding and Art");
-        WidgetsCreateLabel(0,10, "ReyeMe");
-        WidgetsCreateLabel(0,-2, "Music");
-        WidgetsCreateLabel(0,-10, "Random");
-        WidgetsCreateLabel(0,-22, "Art");
-        WidgetsCreateLabel(0,-30, "AnriFox");
+        WidgetsCreateLabel(0, 18, "Coding and Art");
+        WidgetsCreateLabel(0, 10, "ReyeMe");
+        WidgetsCreateLabel(0, -2, "Music");
+        WidgetsCreateLabel(0, -10, "Random");
+        WidgetsCreateLabel(0, -22, "Art");
+        WidgetsCreateLabel(0, -30, "AnriFox");
 
-        WidgetsSetCurrent(WidgetsCreateButton(44,-40, "Exit", MenuCreateMain));
+        WidgetsSetCurrent(WidgetsCreateButton(44, -40, "Exit", MenuCreateMain));
     }
 }
 
@@ -136,7 +136,7 @@ void MenuCredits(bool backButton)
  * @widget Generic widget
  * @message Control message
  */
-void DrawLogo(WidgetsWidget * widget, WidgetMessages message)
+void DrawLogo(WidgetsWidget *widget, WidgetMessages message)
 {
     static int rotation = 0;
 
@@ -174,9 +174,9 @@ void MenuCreateMain(bool backButton)
 
         WidgetsClearAll();
         WidgetsCreate(0, 17, DrawLogo)->IsSelectable = false;
-        WidgetsCreateLabel(0,-5, "Sky Blaster");
-        WidgetsSetCurrent(WidgetsCreateButton(0,-22, "New game", GameCreateNew));
-        WidgetsCreateButton(0,-30, "Credits", MenuCredits);
+        WidgetsCreateLabel(0, -5, "Sky Blaster");
+        WidgetsSetCurrent(WidgetsCreateButton(0, -22, "New game", GameCreateNew));
+        WidgetsCreateButton(0, -30, "Credits", MenuCredits);
     }
 }
 
@@ -196,11 +196,11 @@ void MenuResumeGame(bool backButton)
  */
 void PlayerShoot()
 {
-	pcm_play(PlayerShootSound, PCM_PROTECTED, 6);
+    pcm_play(PlayerShootSound, PCM_PROTECTED, 6);
 
     if (PlayerEntity.GunLevel == 0)
     {
-        Bullet * bullet = jo_malloc(sizeof(Bullet));
+        Bullet *bullet = jo_malloc(sizeof(Bullet));
         bullet->Pos.x = PlayerEntity.Pos.x;
         bullet->Pos.y = PlayerEntity.Pos.y;
         bullet->Type = 0;
@@ -214,7 +214,7 @@ void PlayerShoot()
 
         for (int i = 0; i < 2; i++)
         {
-            Bullet * bullet = jo_malloc(sizeof(Bullet));
+            Bullet *bullet = jo_malloc(sizeof(Bullet));
             bullet->Pos.x = PlayerEntity.Pos.x;
             bullet->Pos.y = PlayerEntity.Pos.y + offset;
             bullet->Type = 0;
@@ -227,9 +227,9 @@ void PlayerShoot()
 
         if (PlayerEntity.GunLevel > 1)
         {
-            for (int i = -1; i < 2; i+=2)
+            for (int i = -1; i < 2; i += 2)
             {
-                Bullet * bullet = jo_malloc(sizeof(Bullet));
+                Bullet *bullet = jo_malloc(sizeof(Bullet));
                 bullet->Pos.x = PlayerEntity.Pos.x;
                 bullet->Pos.y = PlayerEntity.Pos.y;
                 bullet->Type = 0;
@@ -263,13 +263,13 @@ void GameCreateGameOver()
     IsPaused = false;
     WidgetsClearAll();
 
-    WidgetsCreateLabel(0,15, "Game over");
+    WidgetsCreateLabel(0, 15, "Game over");
 
     sprintf(GameOverScoreLabel, "%d", PlayerEntity.Score.Value);
-    WidgetsCreateLabel(0,7, GameOverScoreLabel);
+    WidgetsCreateLabel(0, 7, GameOverScoreLabel);
 
-    WidgetsSetCurrent(WidgetsCreateButton(0,-10, "Try again", GameCreateNew));
-    WidgetsCreateButton(0,-18, "Exit", GameExit);
+    WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Try again", GameCreateNew));
+    WidgetsCreateButton(0, -18, "Exit", GameExit);
 }
 
 void PlayerHit()
@@ -296,11 +296,11 @@ void PlayerHit()
  *  @param bullet Bullet to check
  *  @param isPlayer Was bullet shot by player
  */
-void ReadBulletPositions(Bullet * bullet, bool isPlayer)
+void ReadBulletPositions(Bullet *bullet, bool isPlayer)
 {
     if (!isPlayer && !PlayerEntity.HurtProtect)
     {
-        jo_vector_fixed fromPlayer = { { bullet->Pos.x - PlayerEntity.Pos.x, bullet->Pos.y - PlayerEntity.Pos.y, 0 } };
+        jo_vector_fixed fromPlayer = {{bullet->Pos.x - PlayerEntity.Pos.x, bullet->Pos.y - PlayerEntity.Pos.y, 0}};
         jo_fixed distance = ToolsFastVectorLength(&fromPlayer);
 
         if (distance < JO_FIXED_4)
@@ -323,9 +323,9 @@ void GameLogic()
         if (jo_is_pad1_key_down(JO_KEY_START))
         {
             IsPaused = true;
-            WidgetsCreateLabel(0,15, "Game paused");
-            WidgetsSetCurrent(WidgetsCreateButton(0,-10, "Resume game", MenuResumeGame));
-            WidgetsCreateButton(0,-18, "Exit", GameExit);
+            WidgetsCreateLabel(0, 15, "Game paused");
+            WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Resume game", MenuResumeGame));
+            WidgetsCreateButton(0, -18, "Exit", GameExit);
             return;
         }
 
@@ -347,7 +347,7 @@ void GameLogic()
 
                 for (int i = 0; i < spawnCount; i++)
                 {
-                    jo_pos3D_fixed pos = { NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0 };
+                    jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
                     NpcCreate(jo_random(4) - 1, &pos);
 
                     debug2 = 40 + jo_random(50);
@@ -366,7 +366,7 @@ void GameLogic()
 
             if (action == PlayerActionBomb)
             {
-                // start effect 
+                // start effect
                 BombEffectLifeTime = 0;
             }
 
@@ -407,7 +407,7 @@ void GameLogic()
     }
 
     WidgetsInvokeInput();
-    
+
     if (IsPaused)
     {
         if (adx_stream.volume > 3)
@@ -431,11 +431,11 @@ void GameLogic()
     // Play main menu music
     if (!IsInGame && !IsInGameOver)
     {
-        start_adx_stream((Sint8*)MENU_MUSIC, adx_stream.volume);
+        start_adx_stream((Sint8 *)MENU_MUSIC, adx_stream.volume);
     }
     else if (IsInGame || IsInGameOver)
     {
-        start_adx_stream((Sint8*)GAME_MUSIC, adx_stream.volume);
+        start_adx_stream((Sint8 *)GAME_MUSIC, adx_stream.volume);
     }
 }
 
@@ -452,10 +452,10 @@ void StartGameFadeIn()
             jo_core_tv_on();
         }
 
-        slBack1ColSet((void *) BACK_CRAM, CD_Black);
+        slBack1ColSet((void *)BACK_CRAM, CD_Black);
         slColOffsetB(-TOOLS_FADE_OFFSET, -TOOLS_FADE_OFFSET, -TOOLS_FADE_OFFSET);
         slColOffsetOn(NBG0ON | NBG1ON | NBG2ON | NBG3ON | SPRON | RBG0ON);
-	    slColOffsetBUse(NBG0ON | NBG1ON | NBG2ON | NBG3ON | SPRON | RBG0ON);
+        slColOffsetBUse(NBG0ON | NBG1ON | NBG2ON | NBG3ON | SPRON | RBG0ON);
 
         if (step > 0)
         {
@@ -465,7 +465,7 @@ void StartGameFadeIn()
         else if (step < 0)
         {
             step = 0;
-            slColOffsetB(0,0,0);
+            slColOffsetB(0, 0, 0);
         }
     }
 }
@@ -490,7 +490,7 @@ void GameDraw()
                 jo_sprite_draw3D(LifeSpriteIndex, 140 - (live * 14), -100, 100);
             }
         }
-        
+
         for (int bomb = 1; bomb <= PlayerEntity.Bombs; bomb++)
         {
             jo_sprite_draw3D(BombSpriteIndex, 140 - (bomb * 6), -90, 100);
@@ -503,12 +503,12 @@ void GameDraw()
 
         // Redraw active widgets
         WidgetsRedraw();
-        
+
         if (IsInGame && !IsPaused)
         {
             // Draw HUD
             ScoreDraw(&PlayerEntity.Score);
-            
+
             if (CurrentLevelTitleTick > 0 && CurrentLevelTitleTick < 350)
             {
                 if (CurrentLevelTitleTick > 150 && CurrentLevelTitleTick < 210)
@@ -517,18 +517,18 @@ void GameDraw()
                 }
                 else
                 {
-                    CurrentLevelTitleTick+=2;
+                    CurrentLevelTitleTick += 2;
                 }
 
                 /* TODO: Implement levels before un-commenting this
-                
+
                 // Prepare text
                 char text[12];
                 sprintf(text, "LEVEL %d", CurrentLevel);
-                
+
                 jo_3d_translate_matrix_fixed(
-                    0, 
-                    -jo_fixed_mult(jo_sin(CurrentLevelTitleTick >> 1), jo_int2fixed(80)) + jo_int2fixed(80), 
+                    0,
+                    -jo_fixed_mult(jo_sin(CurrentLevelTitleTick >> 1), jo_int2fixed(80)) + jo_int2fixed(80),
                     jo_int2fixed(-60));
 
                 FontPrintCentered(text, JO_NULL, JO_NULL);
@@ -548,7 +548,7 @@ void GameDraw()
     if (IsInGame && !IsPaused)
     {
         jo_3d_push_matrix();
-	    {
+        {
             jo_3d_rotate_matrix(BG_PLACEMENT_X_ANG, BG_PLACEMENT_Y_ANG, BG_PLACEMENT_Z_ANG);
             jo_3d_translate_matrix(0, 0, BG_PLACEMENT_DEPTH);
 
@@ -572,10 +572,9 @@ void GameDraw()
             NpcDraw();
             BulletListDraw();
             PickupDraw();
-	    }
-	    jo_3d_pop_matrix();
+        }
+        jo_3d_pop_matrix();
     }
-    
 }
 
 /** @brief Loading screen
@@ -594,11 +593,11 @@ void LoadingScreen()
             jo_3d_mesh_draw(&(Logo[logoMesh]));
         }
     }
-	jo_3d_pop_matrix();
+    jo_3d_pop_matrix();
 
     // Draw PoneSound logo
-    jo_printf(5,27,"Audio powered by");
-    jo_printf(5,28,"PoneSound");
+    jo_printf(5, 27, "Audio powered by");
+    jo_printf(5, 28, "PoneSound");
     jo_sprite_draw3D2(0, 0, 200, 90);
 }
 
@@ -643,14 +642,14 @@ void GameInitialize()
     // Game sounds
     PlayerShootSound = load_16bit_pcm((Sint8 *)"PEW.PCM", 15360);
 
-    // Load player and explosion model 
+    // Load player and explosion model
     int temp = 0;
     PlayerMesh = ML_LoadMesh("PLAYER.TMF", JO_ROOT_DIR, &temp);
     ExplosionMesh = ML_LoadMesh("EXP.TMF", JO_ROOT_DIR, &temp);
-    
+
     // Show all other layers and turn off TV
     ToolsFadeOut(SPRON | NBG0ON, LoadingScreen);
-    
+
     // Load ever present RGB0 background
     BackgroundInitializeRGB0();
     jo_clear_screen();
@@ -664,13 +663,13 @@ void Logic()
     GameLogic();
     GameDraw();
 
-    if(jo_is_pad1_key_pressed(JO_KEY_A) && 
-      jo_is_pad1_key_pressed(JO_KEY_B) &&
-      jo_is_pad1_key_pressed(JO_KEY_C) &&
-      jo_is_pad1_key_pressed(JO_KEY_START))
-	{
-		jo_goto_boot_menu();
-	}
+    if (jo_is_pad1_key_pressed(JO_KEY_A) &&
+        jo_is_pad1_key_pressed(JO_KEY_B) &&
+        jo_is_pad1_key_pressed(JO_KEY_C) &&
+        jo_is_pad1_key_pressed(JO_KEY_START))
+    {
+        jo_goto_boot_menu();
+    }
 }
 
 /** @brief Called every vertical blank
@@ -687,11 +686,11 @@ void jo_main(void)
 {
     // Prepare scene
     jo_core_init(JO_COLOR_Black);
-    
+
     // Load sound driver
-	load_drv(ADX_MASTER_2304);
-	snd_adx = add_adx_front_buffer(23040);
-	add_adx_back_buffer((void*)LWRAM);
+    load_drv(ADX_MASTER_2304);
+    snd_adx = add_adx_front_buffer(23040);
+    add_adx_back_buffer((void *)LWRAM);
 
     *(volatile unsigned char *)0x060FFCD8 = 0x1F;
     jo_3d_camera_init(&camera);
@@ -706,6 +705,6 @@ void jo_main(void)
 
     // Start game
     slIntFunction(VBlank);
-	pcm_stream_init(30720, PCM_TYPE_8BIT);
-	pcm_stream_host(Logic);
+    pcm_stream_init(30720, PCM_TYPE_8BIT);
+    pcm_stream_host(Logic);
 }

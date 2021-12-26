@@ -37,22 +37,22 @@ static int ExplosionSpriteStartIndex;
  *  @param spawnExplosion When true, will spawn explosion where NPC was
  *  @return total score of all destroyed NPCs
  */
-static int ListClearInternal(jo_list * list, bool spawnExplosion)
+static int ListClearInternal(jo_list *list, bool spawnExplosion)
 {
     int collectedScore = 0;
-    jo_node * tmp;
+    jo_node *tmp;
 
     for (tmp = list->first; tmp != JO_NULL; tmp = tmp->next)
     {
-        void * data = tmp->data.ptr;
+        void *data = tmp->data.ptr;
 
         if (spawnExplosion)
         {
             // Add score
-            collectedScore += NPC_BASESCORE * (((Npc*)data)->Type + 1);
+            collectedScore += NPC_BASESCORE * (((Npc *)data)->Type + 1);
 
             // Create explosion particle
-            NpcSpawnExplosion(&((Npc*)data)->Pos);
+            NpcSpawnExplosion(&((Npc *)data)->Pos);
         }
 
         jo_free(data);
@@ -69,34 +69,34 @@ static int GetModelFromType(NpcTypes type)
 {
     switch (type)
     {
-        case NpcDart:
-            return 2;
-    
-        case NpcLightShipSinus:
-        case NpcLightShip:
-            return 1;
+    case NpcDart:
+        return 2;
 
-        case NpcMine:
-        default:
-            return 0;
+    case NpcLightShipSinus:
+    case NpcLightShip:
+        return 1;
+
+    case NpcMine:
+    default:
+        return 0;
     }
 }
 
 /** @brief Update NPC with unique behaviour
  *  @param npc NPC to update
  */
-static jo_fixed GetColliderSize(const Npc * npc)
+static jo_fixed GetColliderSize(const Npc *npc)
 {
     switch (npc->Type)
     {
-        case NpcLightShip:
-        case NpcLightShipSinus:
-            return JO_FIXED_16;
+    case NpcLightShip:
+    case NpcLightShipSinus:
+        return JO_FIXED_16;
 
-        case NpcDart:
-        case NpcMine:
-        default:
-            return JO_FIXED_8;
+    case NpcDart:
+    case NpcMine:
+    default:
+        return JO_FIXED_8;
     }
 }
 
@@ -104,16 +104,16 @@ static jo_fixed GetColliderSize(const Npc * npc)
  *  @param npc NPC to check
  *  @return True if got hit by bullet
  */
-static bool CheckNpcAgainstBullets(const Npc * npc)
+static bool CheckNpcAgainstBullets(const Npc *npc)
 {
     jo_node *tmp;
     jo_fixed colliderSize = GetColliderSize(npc);
-    jo_list * bullets = BulletListGet(true);
+    jo_list *bullets = BulletListGet(true);
 
     for (tmp = bullets->first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Bullet * bullet = (Bullet*)tmp->data.ptr;
-        jo_vector_fixed fromNpc = { { bullet->Pos.x - npc->Pos.x, bullet->Pos.y - npc->Pos.y, 0 } };
+        Bullet *bullet = (Bullet *)tmp->data.ptr;
+        jo_vector_fixed fromNpc = {{bullet->Pos.x - npc->Pos.x, bullet->Pos.y - npc->Pos.y, 0}};
         jo_fixed distance = ToolsFastVectorLength(&fromNpc);
 
         if (distance < colliderSize)
@@ -131,10 +131,10 @@ static bool CheckNpcAgainstBullets(const Npc * npc)
  *  @param player Player data
  *  @return True if got hit by player
  */
-static bool CheckNpcAgainstPlayer(const Npc * npc, const Player * player)
+static bool CheckNpcAgainstPlayer(const Npc *npc, const Player *player)
 {
     jo_fixed colliderSize = GetColliderSize(npc);
-    jo_vector_fixed fromNpc = { { player->Pos.x - npc->Pos.x, player->Pos.y - npc->Pos.y, 0 } };
+    jo_vector_fixed fromNpc = {{player->Pos.x - npc->Pos.x, player->Pos.y - npc->Pos.y, 0}};
     jo_fixed distance = ToolsFastVectorLength(&fromNpc);
     return distance < colliderSize + JO_FIXED_2;
 }
@@ -142,47 +142,47 @@ static bool CheckNpcAgainstPlayer(const Npc * npc, const Player * player)
 /** @brief Update NPC with unique behaviour
  *  @param npc NPC to update
  */
-static void UpdateNpcWithBehaviour(Npc * npc)
+static void UpdateNpcWithBehaviour(Npc *npc)
 {
-    jo_vector_fixed velocity = { { npc->Velocity.x, npc->Velocity.y, npc->Velocity.z } };
+    jo_vector_fixed velocity = {{npc->Velocity.x, npc->Velocity.y, npc->Velocity.z}};
     bool shoot = false;
 
     switch (npc->Type)
     {
-        case NpcDart:
-            if (npc->LifeTime > 170 && npc->LifeTime < 230)
-            {
-                velocity.x = 0;
-            }
-            else if (npc->LifeTime >= 230)
-            {
-                velocity.x *= 8;
-            }
-            
-            break;
+    case NpcDart:
+        if (npc->LifeTime > 170 && npc->LifeTime < 230)
+        {
+            velocity.x = 0;
+        }
+        else if (npc->LifeTime >= 230)
+        {
+            velocity.x *= 8;
+        }
 
-        case NpcLightShipSinus:
-            velocity.y = jo_sin(npc->LifeTime) >> 1;
-            shoot = true;
+        break;
 
-            if (npc->LifeTime > 359)
-            {
-                npc->LifeTime = 0;
-            }
+    case NpcLightShipSinus:
+        velocity.y = jo_sin(npc->LifeTime) >> 1;
+        shoot = true;
 
-            break;
+        if (npc->LifeTime > 359)
+        {
+            npc->LifeTime = 0;
+        }
 
-        case NpcLightShip:
-            shoot = true;
-            break;
+        break;
 
-        default:
-            break;
+    case NpcLightShip:
+        shoot = true;
+        break;
+
+    default:
+        break;
     }
 
     if (shoot && npc->LifeTime % 80 == 0)
     {
-        Bullet * bullet = jo_malloc(sizeof(Bullet));
+        Bullet *bullet = jo_malloc(sizeof(Bullet));
         bullet->Pos.x = npc->Pos.x;
         bullet->Pos.y = npc->Pos.y;
         bullet->Type = 1;
@@ -223,23 +223,23 @@ void NpcInitialize()
     }
 }
 
-void NpcSpawnExplosion(const jo_pos3D_fixed * pos)
+void NpcSpawnExplosion(const jo_pos3D_fixed *pos)
 {
-    NpcExplosion * explosion = (NpcExplosion*)jo_malloc(sizeof(NpcExplosion));
+    NpcExplosion *explosion = (NpcExplosion *)jo_malloc(sizeof(NpcExplosion));
     explosion->Pos.x = pos->x;
     explosion->Pos.y = pos->y;
     explosion->Pos.z = pos->z;
     explosion->LifeTime = 0;
 
     jo_list_add_ptr(&Explosions, explosion);
-    
+
     // Play sound
     pcm_play(ExplosionSound, PCM_PROTECTED, 6);
 }
 
-Npc * NpcCreate(const NpcTypes type, const jo_pos3D_fixed * pos)
+Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos)
 {
-    Npc * npc = (Npc*)jo_malloc(sizeof(Npc));
+    Npc *npc = (Npc *)jo_malloc(sizeof(Npc));
     npc->Type = type;
     npc->Pos.x = pos->x;
     npc->Pos.y = pos->y;
@@ -251,18 +251,18 @@ Npc * NpcCreate(const NpcTypes type, const jo_pos3D_fixed * pos)
 
     switch (type)
     {
-        case NpcDart:
-            npc->Velocity.x = JO_FIXED_1_DIV_2;
-            break;
-    
-        case NpcMine:
-        case NpcLightShipSinus:
-        case NpcLightShip:
-            npc->Velocity.x = JO_FIXED_1 + (JO_FIXED_1 >> 2);
-            break;
+    case NpcDart:
+        npc->Velocity.x = JO_FIXED_1_DIV_2;
+        break;
 
-        default:
-            break;
+    case NpcMine:
+    case NpcLightShipSinus:
+    case NpcLightShip:
+        npc->Velocity.x = JO_FIXED_1 + (JO_FIXED_1 >> 2);
+        break;
+
+    default:
+        break;
     }
 
     jo_list_add_ptr(&Npcs, npc);
@@ -280,15 +280,15 @@ int NpcDestroyAll()
     return ListClearInternal(&Npcs, true);
 }
 
-int NpcDestroyAllInRange(const jo_pos3D_fixed * pos, const jo_fixed range)
+int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
 {
     int score = 0;
     jo_node *tmp;
 
     for (tmp = Npcs.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Npc * npc = (Npc*)tmp->data.ptr;
-        jo_vector_fixed fromNpc = { { pos->x - npc->Pos.x, pos->y - npc->Pos.y, 0 } };
+        Npc *npc = (Npc *)tmp->data.ptr;
+        jo_vector_fixed fromNpc = {{pos->x - npc->Pos.x, pos->y - npc->Pos.y, 0}};
         jo_fixed distance = ToolsFastVectorLength(&fromNpc);
 
         if (distance < range)
@@ -305,11 +305,11 @@ int NpcDestroyAllInRange(const jo_pos3D_fixed * pos, const jo_fixed range)
 void NpcUpdateExplosions()
 {
     jo_node *tmp;
-    
+
     for (tmp = Explosions.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        NpcExplosion * explosion = (NpcExplosion*)tmp->data.ptr;
-        
+        NpcExplosion *explosion = (NpcExplosion *)tmp->data.ptr;
+
         if (explosion->LifeTime % 2 == 0)
         {
             explosion->Frame++;
@@ -327,7 +327,7 @@ void NpcUpdateExplosions()
     }
 }
 
-int NpcUpdate(Player * player, void (*PlayerHitCallback)())
+int NpcUpdate(Player *player, void (*PlayerHitCallback)())
 {
     int score = 0;
     jo_node *tmp;
@@ -335,7 +335,7 @@ int NpcUpdate(Player * player, void (*PlayerHitCallback)())
 
     for (tmp = Npcs.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Npc * npc = (Npc*)tmp->data.ptr;
+        Npc *npc = (Npc *)tmp->data.ptr;
 
         UpdateNpcWithBehaviour(npc);
         npc->LifeTime++;
@@ -376,13 +376,13 @@ void NpcDraw()
 
     for (tmp = Npcs.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Npc * npc = (Npc*)tmp->data.ptr;
+        Npc *npc = (Npc *)tmp->data.ptr;
         modelNumber = GetModelFromType(npc->Type);
-        
+
         jo_3d_push_matrix();
         {
             jo_3d_translate_matrix_fixed(npc->Pos.x, npc->Pos.y, npc->Pos.z);
-            
+
             for (i = 0; i < NpcMeshSizes[modelNumber]; i++)
             {
                 jo_3d_mesh_draw(&(NpcMeshes[modelNumber][i]));
@@ -393,7 +393,7 @@ void NpcDraw()
 
     for (tmp = Explosions.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        NpcExplosion * explosion = (NpcExplosion*)tmp->data.ptr;
+        NpcExplosion *explosion = (NpcExplosion *)tmp->data.ptr;
 
         jo_3d_push_matrix();
         {

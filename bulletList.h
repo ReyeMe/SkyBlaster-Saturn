@@ -2,7 +2,7 @@
 #define __BULLET_LIST_H__
 
 /** @brief Callback for BulletListUpdate() */
-typedef void (*BulletListCallback)(Bullet * bullet, bool isPlayer);
+typedef void (*BulletListCallback)(Bullet *bullet, bool isPlayer);
 
 /** @brief Initialize bullet lists
  */
@@ -16,7 +16,7 @@ void BulletListDraw();
  *  @param playerList Indicates whether to return player bullets or enemy bullets
  *  @return Bullet list
  */
-jo_list * BulletListGet(bool playerList);
+jo_list *BulletListGet(bool playerList);
 
 /** @brief Update positions of all bullets
  */
@@ -31,11 +31,11 @@ void BulletListClear(bool onlyEnemy);
  *  @param pos Center point
  *  @param range Destruction range
  */
-void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed * pos, const jo_fixed range);
+void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed *pos, const jo_fixed range);
 
 /** @brief Add bullet to list
  *  @param isPlayer Indicates whether bullet belongs to player entity
  */
-void BulletListAdd(Bullet * bullet, bool isPlayer);
+void BulletListAdd(Bullet *bullet, bool isPlayer);
 
 #endif

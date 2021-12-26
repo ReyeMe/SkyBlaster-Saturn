@@ -1,7 +1,7 @@
 #include <jo/jo.h>
 #include "tools.h"
 
-jo_fixed ToolsFastVectorLength(const jo_vector_fixed * vector)
+jo_fixed ToolsFastVectorLength(const jo_vector_fixed *vector)
 {
     // Alpha is 0.9398086351723256
     // Beta is 0.38928148272372454
@@ -18,7 +18,7 @@ jo_fixed ToolsFastVectorLength(const jo_vector_fixed * vector)
     jo_fixed min = JO_MIN(x, minYZ);
     jo_fixed max = JO_MAX(x, maxYZ);
     jo_fixed mid = (y < x) ? ((y < z) ? ((z < x) ? z : x) : y) : ((x < z) ? ((z < y) ? z : y) : x);
-    
+
     // Aproximate vector length (alpha * max + beta * mid + gama * min)
     jo_fixed approximation = jo_fixed_mult(61591, max) + jo_fixed_mult(25512, mid) + jo_fixed_mult(19576, min);
     return JO_MAX(max, approximation);
@@ -26,18 +26,18 @@ jo_fixed ToolsFastVectorLength(const jo_vector_fixed * vector)
 
 void ToolsEnableLayer(Uint16 layer)
 {
-    slSynch(); //Clear framebuffer
-    slBack1ColSet((void *) BACK_CRAM, CD_Black);
+    slSynch(); // Clear framebuffer
+    slBack1ColSet((void *)BACK_CRAM, CD_Black);
     slColOffsetOn(layer);
-	slColOffsetBUse(layer);
-    slColOffsetB(0,0,0);
+    slColOffsetBUse(layer);
+    slColOffsetB(0, 0, 0);
 }
 
 void ToolsDisableLayer(Uint16 layer)
 {
-    slBack1ColSet((void *) BACK_CRAM, CD_Black);
+    slBack1ColSet((void *)BACK_CRAM, CD_Black);
     slColOffsetOn(layer);
-	slColOffsetBUse(layer);
+    slColOffsetBUse(layer);
     slColOffsetB(-TOOLS_FADE_OFFSET, -TOOLS_FADE_OFFSET, -TOOLS_FADE_OFFSET);
     slScrPosNbg0(0, 0);
     slScrPosNbg1(0, 0);
@@ -45,38 +45,38 @@ void ToolsDisableLayer(Uint16 layer)
 
 void ToolsFadeIn(Uint16 layer, void (*drawLoop)(void))
 {
-    slBack1ColSet((void *) BACK_CRAM, CD_Black);
+    slBack1ColSet((void *)BACK_CRAM, CD_Black);
     slColOffsetB(-TOOLS_FADE_OFFSET, -TOOLS_FADE_OFFSET, -TOOLS_FADE_OFFSET);
     slColOffsetOn(layer);
-	slColOffsetBUse(layer);
+    slColOffsetBUse(layer);
 
     jo_core_tv_on();
 
     for (int step = TOOLS_FADE_OFFSET; step >= 0; step -= TOOLS_FADE_SPEED)
     {
-       slColOffsetB(-step, -step, -step);
-       
+        slColOffsetB(-step, -step, -step);
+
         if (drawLoop != JO_NULL)
         {
             drawLoop();
         }
-        
-       slSynch();
+
+        slSynch();
     }
 
-    slColOffsetB(0,0,0);
+    slColOffsetB(0, 0, 0);
 }
 
 void ToolsFadeOut(Uint16 layer, void (*drawLoop)(void))
 {
-    slBack1ColSet((void *) BACK_CRAM, CD_Black);
+    slBack1ColSet((void *)BACK_CRAM, CD_Black);
     slColOffsetOn(layer);
-	slColOffsetBUse(layer);
+    slColOffsetBUse(layer);
 
     for (int step = 0; step <= TOOLS_FADE_OFFSET; step += TOOLS_FADE_SPEED)
     {
         slColOffsetB(-step, -step, -step);
-        
+
         if (drawLoop != JO_NULL)
         {
             drawLoop();

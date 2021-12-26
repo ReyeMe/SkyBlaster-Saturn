@@ -38,13 +38,13 @@ typedef struct _W_widget
     /* Y screen coordinate */
     int y;
 
-    /* Widget message process fuction 
+    /* Widget message process fuction
      * MUST NOT BE EMPTY!
      */
-    void (*wProc)(WidgetsWidget*,WidgetMessages);
+    void (*wProc)(WidgetsWidget *, WidgetMessages);
 
     /* User data storage, user must initialize and clear it by him self*/
-    void * data;
+    void *data;
 
     /* If set to TRUE, widget will not recieve draw message */
     bool IsVisible;
@@ -56,7 +56,7 @@ typedef struct _W_widget
 /* Delete widget
  * @param widget Widget to delete
  */
-void WidgetsClear(WidgetsWidget * widget);
+void WidgetsClear(WidgetsWidget *widget);
 
 /* Clear all controls
  */
@@ -69,7 +69,7 @@ void WidgetsClearAll();
  * @param wProc Widget message process function
  * @return Created widget instance
  */
-WidgetsWidget * WidgetsCreate(int x, int y, void (*wProc)(WidgetsWidget*,WidgetMessages));
+WidgetsWidget *WidgetsCreate(int x, int y, void (*wProc)(WidgetsWidget *, WidgetMessages));
 
 /*
  * Create widget and register it
@@ -79,22 +79,22 @@ WidgetsWidget * WidgetsCreate(int x, int y, void (*wProc)(WidgetsWidget*,WidgetM
  * @param data User data
  * @return Created widget instance
  */
-WidgetsWidget * WidgetsCreateWithData(int x, int y, void (*wProc)(WidgetsWidget*,WidgetMessages), void * data);
+WidgetsWidget *WidgetsCreateWithData(int x, int y, void (*wProc)(WidgetsWidget *, WidgetMessages), void *data);
 
 /* Sends process input message to currently selected widget*/
 void WidgetsInvokeInput();
 
 /* Get list of all widget nodes */
-jo_list * WidgetsGetAll();
+jo_list *WidgetsGetAll();
 
 /* Get current widget node */
-WidgetsWidget * WidgetsGetCurrent();
+WidgetsWidget *WidgetsGetCurrent();
 
 /* Get next available widget node */
-WidgetsWidget * WidgetsGetNextSelectable();
+WidgetsWidget *WidgetsGetNextSelectable();
 
 /* Get previous available widget node */
-WidgetsWidget * WidgetsGetPrevSelectable();
+WidgetsWidget *WidgetsGetPrevSelectable();
 
 /* Initialize UI */
 void WidgetsInitialize();
@@ -102,10 +102,10 @@ void WidgetsInitialize();
 /* Sends redraw message to visible widgets */
 void WidgetsRedraw();
 
-/* Set active widget node 
+/* Set active widget node
  * @widget Widget to set as active
  * @return True on success
  */
-bool WidgetsSetCurrent(WidgetsWidget * widget);
+bool WidgetsSetCurrent(WidgetsWidget *widget);
 
 #endif

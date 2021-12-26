@@ -18,7 +18,7 @@ static jo_list EnemyBullets;
  */
 static void BulletListDrawInternal(jo_node *node)
 {
-    BulletDraw((Bullet*)node->data.ptr);
+    BulletDraw((Bullet *)node->data.ptr);
 }
 
 /** @brief Update bullet from list
@@ -26,9 +26,9 @@ static void BulletListDrawInternal(jo_node *node)
  *  @param callback Callback after update
  *  @param isPlayer Is parent player?
  */
-static void BulletListUpdateInternal(jo_node * node, BulletListCallback callback, bool isPlayer)
+static void BulletListUpdateInternal(jo_node *node, BulletListCallback callback, bool isPlayer)
 {
-    Bullet * bullet = (Bullet*)node->data.ptr;
+    Bullet *bullet = (Bullet *)node->data.ptr;
 
     if (BulletUpdate(bullet))
     {
@@ -53,13 +53,13 @@ static void BulletListUpdateInternal(jo_node * node, BulletListCallback callback
 /** @brief Clear bullet list
  *  @param list Pointer to list to clear
  */
-static void BulletListClearInternal(jo_list * list)
+static void BulletListClearInternal(jo_list *list)
 {
-    jo_node * tmp;
+    jo_node *tmp;
 
     for (tmp = list->first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Bullet * bullet = (Bullet*)tmp->data.ptr;
+        Bullet *bullet = (Bullet *)tmp->data.ptr;
         jo_free(bullet);
         jo_list_remove(list, tmp);
     }
@@ -81,7 +81,7 @@ void BulletListDraw()
     jo_list_foreach(&EnemyBullets, BulletListDrawInternal);
 }
 
-jo_list * BulletListGet(bool playerList)
+jo_list *BulletListGet(bool playerList)
 {
     if (playerList)
     {
@@ -118,14 +118,14 @@ void BulletListClear(bool onlyEnemy)
     BulletListClearInternal(&EnemyBullets);
 }
 
-void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed * pos, const jo_fixed range)
+void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
 {
     jo_node *node;
 
     for (node = EnemyBullets.first; node != JO_NULL; node = node->next)
     {
-        Bullet * bullet = (Bullet*)node->data.ptr;
-        jo_vector_fixed fromBullet = { { pos->x - bullet->Pos.x, pos->y - bullet->Pos.y, 0 } };
+        Bullet *bullet = (Bullet *)node->data.ptr;
+        jo_vector_fixed fromBullet = {{pos->x - bullet->Pos.x, pos->y - bullet->Pos.y, 0}};
         jo_fixed distance = ToolsFastVectorLength(&fromBullet);
 
         if (distance < range)
@@ -135,7 +135,7 @@ void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed * pos, const jo_fix
     }
 }
 
-void BulletListAdd(Bullet * bullet, bool isPlayer)
+void BulletListAdd(Bullet *bullet, bool isPlayer)
 {
     if (isPlayer)
     {

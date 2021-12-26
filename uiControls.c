@@ -19,7 +19,7 @@ static short ButtonAccept;
  */
 typedef struct
 {
-    char * Text;
+    char *Text;
     void (*Action)(bool);
     int Scale;
 } ButtonData;
@@ -28,7 +28,7 @@ typedef struct
  * @widget Button widget
  * @message Control message
  */
-void ControlLabel(WidgetsWidget * widget, WidgetMessages message)
+void ControlLabel(WidgetsWidget *widget, WidgetMessages message)
 {
     if (message == WIDGET_DRAW)
     {
@@ -45,7 +45,7 @@ void ControlLabel(WidgetsWidget * widget, WidgetMessages message)
  * @widget Button widget
  * @message Control message
  */
-void ControlButton(WidgetsWidget * widget, WidgetMessages message)
+void ControlButton(WidgetsWidget *widget, WidgetMessages message)
 {
     if (message == WIDGET_DRAW)
     {
@@ -79,7 +79,7 @@ void ControlButton(WidgetsWidget * widget, WidgetMessages message)
                     ((ButtonData *)widget->data)->Scale = 0;
                 }
             }
-            
+
             jo_3d_translate_matrix(widget->y, widget->x, -60);
             jo_3d_set_scale_fixed(scale, scale, JO_FIXED_1);
             FontPrintCentered(((ButtonData *)widget->data)->Text, JO_NULL, JO_NULL);
@@ -92,7 +92,7 @@ void ControlButton(WidgetsWidget * widget, WidgetMessages message)
     }
     else if (message == WIDGET_INPUT)
     {
-        WidgetsWidget * newSelection = JO_NULL;
+        WidgetsWidget *newSelection = JO_NULL;
 
         if (jo_is_pad1_key_down(JO_KEY_UP))
         {
@@ -105,13 +105,13 @@ void ControlButton(WidgetsWidget * widget, WidgetMessages message)
         else if (jo_is_pad1_key_down(JO_KEY_A) || jo_is_pad1_key_down(JO_KEY_B) || jo_is_pad1_key_down(JO_KEY_START))
         {
             ((ButtonData *)widget->data)->Action(jo_is_pad1_key_down(JO_KEY_B));
-	        pcm_play(ButtonAccept, PCM_PROTECTED, 6);
+            pcm_play(ButtonAccept, PCM_PROTECTED, 6);
         }
 
         if (newSelection != JO_NULL)
         {
             WidgetsSetCurrent(newSelection);
-	        pcm_play(ButtonChange, PCM_PROTECTED, 6);
+            pcm_play(ButtonChange, PCM_PROTECTED, 6);
         }
     }
 }
@@ -122,20 +122,20 @@ void ControlButton(WidgetsWidget * widget, WidgetMessages message)
 
 void WidgetsControlsInitialize()
 {
-	ButtonChange = load_16bit_pcm((Sint8 *)"BUTTON.PCM", 15360);
-	ButtonAccept = load_16bit_pcm((Sint8 *)"CLICK.PCM", 15360);
+    ButtonChange = load_16bit_pcm((Sint8 *)"BUTTON.PCM", 15360);
+    ButtonAccept = load_16bit_pcm((Sint8 *)"CLICK.PCM", 15360);
 }
 
-WidgetsWidget * WidgetsCreateLabel(int x, int y, const char * const text)
+WidgetsWidget *WidgetsCreateLabel(int x, int y, const char *const text)
 {
-    WidgetsWidget * widget = WidgetsCreateWithData(x, y, &ControlLabel, (void *)text);
+    WidgetsWidget *widget = WidgetsCreateWithData(x, y, &ControlLabel, (void *)text);
     widget->IsSelectable = false;
     return widget;
 }
 
-WidgetsWidget * WidgetsCreateButton(int x, int y, char * text, void (*action)(bool))
+WidgetsWidget *WidgetsCreateButton(int x, int y, char *text, void (*action)(bool))
 {
-    ButtonData * data = jo_malloc(sizeof(ButtonData));
+    ButtonData *data = jo_malloc(sizeof(ButtonData));
     data->Text = text;
     data->Action = action;
     data->Scale = 0;

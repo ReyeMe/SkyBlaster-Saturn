@@ -3,8 +3,8 @@
 
 #define PICKUP_SPAWN_AREA_X (-13107200)
 #define PICKUP_DESPAWN_AREA_X (13107200)
-#define PICKUP_DESPAWN_AREA_Y_NEG (-5898240) // 80.00
-#define PICKUP_DESPAWN_AREA_Y_POS (5898240) // 80.00
+#define PICKUP_DESPAWN_AREA_Y_NEG (-5898240) // 90.00
+#define PICKUP_DESPAWN_AREA_Y_POS (5898240)  // 90.00
 
 /** @brief Available pickup types
  */
@@ -34,7 +34,7 @@ void PickupInitialize();
  *  @param pos Pickup location
  *  @param type Pickup type
  */
-void PickupCreate(const jo_pos3D_fixed * pos, const PickupType type);
+void PickupCreate(const jo_pos3D_fixed *pos, const PickupType type);
 
 /** @brief Clear all pickups from screen
  */
@@ -43,7 +43,7 @@ void PickupClearAll();
 /** @brief Update pickups on screen
  *  @param player Current player
  */
-void PickupUpdate(Player * player);
+void PickupUpdate(Player *player);
 
 /** @brief Draw pickups on screen
  */

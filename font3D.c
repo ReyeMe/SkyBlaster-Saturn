@@ -7,10 +7,10 @@
 // -------------------------------------
 
 /* Contains meshes for all numeric character */
-static jo_3d_mesh * numerics;
+static jo_3d_mesh *numerics;
 
 /* Contains meshes for all letter charactes */
-static jo_3d_mesh * letters;
+static jo_3d_mesh *letters;
 
 // -------------------------------------
 // Public
@@ -33,7 +33,7 @@ void FontInitialize()
 
     loaded = 0;
     letters = ML_LoadMesh("FNTLET.TMF", "MODELS", &loaded);
-    
+
     for (index = 0; index < loaded; index++)
     {
         for (face = 0; face < letters[index].data.nbPolygon; face++)
@@ -43,11 +43,11 @@ void FontInitialize()
     }
 }
 
-void FontPrintCentered(const char * text, void (*modifier)(const int column, const int row, FontModifier * data), void * customData)
+void FontPrintCentered(const char *text, void (*modifier)(const int column, const int row, FontModifier *data), void *customData)
 {
     int letterLineLoc = 0;
     int line = 0;
-    jo_3d_mesh * character = JO_NULL;
+    jo_3d_mesh *character = JO_NULL;
     int index = 0;
     int length = 0;
     char current = text[index++];
@@ -82,7 +82,7 @@ void FontPrintCentered(const char * text, void (*modifier)(const int column, con
 
         if (character != JO_NULL)
         {
-            FontModifier data = { { letterLineLoc * FONT_HEIGHT, line * FONT_WIDTH, 0 }, { 0, 0, 0 }, customData };
+            FontModifier data = {{letterLineLoc * FONT_HEIGHT, line * FONT_WIDTH, 0}, {0, 0, 0}, customData};
 
             if (modifier != JO_NULL)
             {
@@ -90,16 +90,19 @@ void FontPrintCentered(const char * text, void (*modifier)(const int column, con
             }
 
             jo_3d_push_matrix();
-	        {
+            {
                 jo_3d_translate_matrix_fixed(-data.Pos.y, -data.Pos.x + offsetText, data.Pos.z);
 
-                if (data.Rotation.ry != 0) jo_3d_rotate_matrix_x(data.Rotation.ry);
-                if (data.Rotation.rx != 0) jo_3d_rotate_matrix_y(data.Rotation.rx);
-                if (data.Rotation.rz != 0) jo_3d_rotate_matrix_z(data.Rotation.rz);
+                if (data.Rotation.ry != 0)
+                    jo_3d_rotate_matrix_x(data.Rotation.ry);
+                if (data.Rotation.rx != 0)
+                    jo_3d_rotate_matrix_y(data.Rotation.rx);
+                if (data.Rotation.rz != 0)
+                    jo_3d_rotate_matrix_z(data.Rotation.rz);
 
                 jo_3d_mesh_draw(character);
-	        }
-	        jo_3d_pop_matrix();
+            }
+            jo_3d_pop_matrix();
         }
 
         letterLineLoc++;
@@ -114,11 +117,11 @@ void FontPrintCentered(const char * text, void (*modifier)(const int column, con
     }
 }
 
-void FontPrint(const char * text, void (*modifier)(const int column, const int row, FontModifier * data), void * customData)
+void FontPrint(const char *text, void (*modifier)(const int column, const int row, FontModifier *data), void *customData)
 {
     int letterLineLoc = 0;
     int line = 0;
-    jo_3d_mesh * character = JO_NULL;
+    jo_3d_mesh *character = JO_NULL;
     int index = 0;
     char current = text[index++];
 
@@ -142,7 +145,7 @@ void FontPrint(const char * text, void (*modifier)(const int column, const int r
 
         if (character != JO_NULL)
         {
-            FontModifier data = { { letterLineLoc * FONT_HEIGHT, line * FONT_WIDTH, 0 }, { 0, 0, 0 }, customData };
+            FontModifier data = {{letterLineLoc * FONT_HEIGHT, line * FONT_WIDTH, 0}, {0, 0, 0}, customData};
 
             if (modifier != JO_NULL)
             {
@@ -150,16 +153,19 @@ void FontPrint(const char * text, void (*modifier)(const int column, const int r
             }
 
             jo_3d_push_matrix();
-	        {
+            {
                 jo_3d_translate_matrix_fixed(-data.Pos.y, -data.Pos.x, data.Pos.z);
 
-                if (data.Rotation.ry != 0) jo_3d_rotate_matrix_x(data.Rotation.ry);
-                if (data.Rotation.rx != 0) jo_3d_rotate_matrix_y(data.Rotation.rx);
-                if (data.Rotation.rz != 0) jo_3d_rotate_matrix_z(data.Rotation.rz);
+                if (data.Rotation.ry != 0)
+                    jo_3d_rotate_matrix_x(data.Rotation.ry);
+                if (data.Rotation.rx != 0)
+                    jo_3d_rotate_matrix_y(data.Rotation.rx);
+                if (data.Rotation.rz != 0)
+                    jo_3d_rotate_matrix_z(data.Rotation.rz);
 
                 jo_3d_mesh_draw(character);
-	        }
-	        jo_3d_pop_matrix();
+            }
+            jo_3d_pop_matrix();
         }
 
         letterLineLoc++;

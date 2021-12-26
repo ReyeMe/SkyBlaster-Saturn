@@ -24,51 +24,51 @@ static short PickupSound;
  *  @param pickup Pickup to collect
  *  @param player Player data
  */
-static void CollectPickup(const Pickup * pickup, Player * player)
+static void CollectPickup(const Pickup *pickup, Player *player)
 {
     switch (pickup->Type)
     {
-        case PickupTypeLife:
+    case PickupTypeLife:
 
-            if (player->Lives >= 9)
-            {
-                ScoreAddValue(&player->Score, 400);
-            }
-            else
-            {
-                player->Lives++;
-            }
+        if (player->Lives >= 9)
+        {
+            ScoreAddValue(&player->Score, 400);
+        }
+        else
+        {
+            player->Lives++;
+        }
 
-            break;
+        break;
 
-        case PickupTypeGun:
+    case PickupTypeGun:
 
-            if (player->GunLevel >= 2)
-            {
-                ScoreAddValue(&player->Score, 25);
-            }
-            else
-            {
-                player->GunLevel++;
-            }
+        if (player->GunLevel >= 2)
+        {
+            ScoreAddValue(&player->Score, 25);
+        }
+        else
+        {
+            player->GunLevel++;
+        }
 
-            break;
+        break;
 
-        case PickupTypeBomb:
+    case PickupTypeBomb:
 
-            if (player->Bombs >= 9)
-            {
-                ScoreAddValue(&player->Score, 200);
-            }
-            else
-            {
-                player->Bombs++;
-            }
+        if (player->Bombs >= 9)
+        {
+            ScoreAddValue(&player->Score, 200);
+        }
+        else
+        {
+            player->Bombs++;
+        }
 
-            break;
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 
     pcm_play(PickupSound, PCM_PROTECTED, 6);
@@ -79,9 +79,9 @@ static void CollectPickup(const Pickup * pickup, Player * player)
  *  @param player Player data
  *  @return True if collected by player
  */
-static bool CheckPickupAgainstPlayer(const Pickup * pickup, const Player * player)
+static bool CheckPickupAgainstPlayer(const Pickup *pickup, const Player *player)
 {
-    jo_vector_fixed fromPickup = { { pickup->Pos.x - player->Pos.x, pickup->Pos.y - player->Pos.y, 0 } };
+    jo_vector_fixed fromPickup = {{pickup->Pos.x - player->Pos.x, pickup->Pos.y - player->Pos.y, 0}};
     jo_fixed distance = ToolsFastVectorLength(&fromPickup);
     return distance < JO_FIXED_16;
 }
@@ -99,9 +99,9 @@ void PickupInitialize()
     jo_sprite_add_tga(JO_ROOT_DIR, "BMB.TGA", JO_COLOR_Transparent);
 }
 
-void PickupCreate(const jo_pos3D_fixed * pos, const PickupType type)
+void PickupCreate(const jo_pos3D_fixed *pos, const PickupType type)
 {
-    Pickup * pickup = (Pickup*)jo_malloc(sizeof(Pickup));
+    Pickup *pickup = (Pickup *)jo_malloc(sizeof(Pickup));
     pickup->Pos.x = pos->x;
     pickup->Pos.y = pos->y;
     pickup->Type = type;
@@ -114,13 +114,13 @@ void PickupClearAll()
     jo_list_free_and_clear(&Pickups);
 }
 
-void PickupUpdate(Player * player)
+void PickupUpdate(Player *player)
 {
     jo_node *tmp;
 
     for (tmp = Pickups.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Pickup * pickup = (Pickup*)tmp->data.ptr;
+        Pickup *pickup = (Pickup *)tmp->data.ptr;
         pickup->Pos.x += JO_FIXED_1 + JO_FIXED_1_DIV_2;
 
         if (CheckPickupAgainstPlayer(pickup, player))
@@ -128,10 +128,10 @@ void PickupUpdate(Player * player)
             CollectPickup(pickup, player);
             jo_list_free_and_remove(&Pickups, tmp);
         }
-        else if ((pickup->Pos.x > PICKUP_DESPAWN_AREA_X) || 
-            (pickup->Pos.x < PICKUP_SPAWN_AREA_X) ||
-            (pickup->Pos.y > PICKUP_DESPAWN_AREA_Y_POS) || 
-            (pickup->Pos.y < PICKUP_DESPAWN_AREA_Y_NEG))
+        else if ((pickup->Pos.x > PICKUP_DESPAWN_AREA_X) ||
+                 (pickup->Pos.x < PICKUP_SPAWN_AREA_X) ||
+                 (pickup->Pos.y > PICKUP_DESPAWN_AREA_Y_POS) ||
+                 (pickup->Pos.y < PICKUP_DESPAWN_AREA_Y_NEG))
         {
             jo_list_free_and_remove(&Pickups, tmp);
         }
@@ -144,13 +144,13 @@ void PickupDraw()
 
     for (tmp = Pickups.first; tmp != JO_NULL; tmp = tmp->next)
     {
-        Pickup * pickup = (Pickup*)tmp->data.ptr;
+        Pickup *pickup = (Pickup *)tmp->data.ptr;
 
         jo_3d_push_matrix();
-	    {
+        {
             jo_3d_translate_matrix_fixed(pickup->Pos.x, pickup->Pos.y, 0);
             jo_3d_draw_sprite(FirstSpriteIndex + pickup->Type);
-	    }
-	    jo_3d_pop_matrix();
+        }
+        jo_3d_pop_matrix();
     }
 }

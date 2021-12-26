@@ -11,7 +11,7 @@ void WidgetsControlsInitialize();
  *  @param text Label text
  *  @return Created widget
  */
-WidgetsWidget * WidgetsCreateLabel(int x, int y, const char * const text);
+WidgetsWidget *WidgetsCreateLabel(int x, int y, const char *const text);
 
 /** @brief Create widgets button
  *  @param x X location
@@ -20,6 +20,6 @@ WidgetsWidget * WidgetsCreateLabel(int x, int y, const char * const text);
  *  @param action Button action
  *  @return Created widget
  */
-WidgetsWidget * WidgetsCreateButton(int x, int y, char * text, void (*action)(bool));
+WidgetsWidget *WidgetsCreateButton(int x, int y, char *text, void (*action)(bool));
 
 #endif

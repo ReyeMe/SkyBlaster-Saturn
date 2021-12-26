@@ -67,7 +67,7 @@ typedef struct
  * @param loaded number of loaded models
  * @return loaded array of meshes
  */
-jo_3d_mesh * ML_LoadMesh(const char *file, const char * dir, int *loaded);
+jo_3d_mesh *ML_LoadMesh(const char *file, const char *dir, int *loaded);
 
 /*
  * Load Jo-Engine mesh
@@ -77,6 +77,6 @@ jo_3d_mesh * ML_LoadMesh(const char *file, const char * dir, int *loaded);
  * @param loaded number of loaded models
  * @return loaded array of meshes
  */
-jo_3d_mesh * ML_LoadMeshWithCustomTextureLoader(const char * file, const char * dir, int (*texture_loader)(TmfTexture*, const char *, int), int * loaded);
+jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir, int (*texture_loader)(TmfTexture *, const char *, int), int *loaded);
 
 #endif

@@ -5,9 +5,9 @@
 // VDP2 stuff
 // -------------------------------------
 
-#define	BG_LINE_COLOR_TABLE (VDP2_VRAM_A0 + 0x1f400)
-#define	BG_COLOR_RAM_ADR (VDP2_COLRAM + 0x00600)
-#define	BG_COLOR_PAL_OFFSET (800)
+#define BG_LINE_COLOR_TABLE (VDP2_VRAM_A0 + 0x1f400)
+#define BG_COLOR_RAM_ADR (VDP2_COLRAM + 0x00600)
+#define BG_COLOR_PAL_OFFSET (800)
 
 // -------------------------------------
 // Placement and movement

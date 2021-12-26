@@ -7,33 +7,33 @@
  * @param count Total number of textures to load
  * @return Index of first loaded texture
  */
-static int ML_BasicTextureLoader(TmfTexture * texture, const char * modelDir, int count)
+static int ML_BasicTextureLoader(TmfTexture *texture, const char *modelDir, int count)
 {
     int startIndex = -1;
 
-	if (startIndex < 0)
-	{
-    	for (int index = 0; index < count; index++)
-    	{
-    	    if (texture[index].FileName[0] != '\0')
-    	    {
-    	        int loadedAt = jo_sprite_add_tga(modelDir, texture[index].FileName, JO_COLOR_Black);
+    if (startIndex < 0)
+    {
+        for (int index = 0; index < count; index++)
+        {
+            if (texture[index].FileName[0] != '\0')
+            {
+                int loadedAt = jo_sprite_add_tga(modelDir, texture[index].FileName, JO_COLOR_Black);
 
-    	        if (startIndex == -1)
-    	            startIndex = loadedAt;
-    	    }
-    	}
-	}
+                if (startIndex == -1)
+                    startIndex = loadedAt;
+            }
+        }
+    }
 
     return startIndex;
 }
 
-jo_3d_mesh * ML_LoadMesh(const char *file, const char *dir, int *loaded)
+jo_3d_mesh *ML_LoadMesh(const char *file, const char *dir, int *loaded)
 {
     return ML_LoadMeshWithCustomTextureLoader(file, dir, &ML_BasicTextureLoader, loaded);
 }
 
-jo_3d_mesh * ML_LoadMeshWithCustomTextureLoader(const char * file, const char * dir, int (*texture_loader)(TmfTexture*, const char *, int), int * loaded)
+jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir, int (*texture_loader)(TmfTexture *, const char *, int), int *loaded)
 {
     int face;
     int model;
@@ -69,10 +69,12 @@ jo_3d_mesh * ML_LoadMeshWithCustomTextureLoader(const char * file, const char * 
         meshes[model].data.nbPolygon = modelHeader->FaceCount;
 
         // Read vertices
-        for (point = 0; point < modelHeader->VerticesCount; point++) {
-            for (int xyz = 0; xyz < XYZ; xyz++) {
+        for (point = 0; point < modelHeader->VerticesCount; point++)
+        {
+            for (int xyz = 0; xyz < XYZ; xyz++)
+            {
                 meshes[model].data.pntbl[point][xyz] = (FIXED)(((*(stream)) << 24) | ((*(stream + 1)) << 16) | ((*(stream + 2)) << 8) | (*(stream + 3)));
-                stream+=4;
+                stream += 4;
             }
         }
 

@@ -23,7 +23,7 @@ typedef struct
 } Cloud;
 
 /* Current sky color */
-static int CurrentSkyColor[XYZ] = { BG_SKY_BLUE_R, BG_SKY_BLUE_G, BG_SKY_BLUE_B };
+static int CurrentSkyColor[XYZ] = {BG_SKY_BLUE_R, BG_SKY_BLUE_G, BG_SKY_BLUE_B};
 
 /* Current sky color mode */
 static BackgroundColorShift CurrentColorMode = BackgroundBlueSky;
@@ -64,30 +64,32 @@ static void SetLineColors()
 
     switch (CurrentColorMode)
     {
-        case BackgroundOrangeSky:
-            target[X] = BG_SKY_ORANGE_R;
-            target[Y] = BG_SKY_ORANGE_G;
-            target[Z] = BG_SKY_ORANGE_B;
-            break;
+    case BackgroundOrangeSky:
+        target[X] = BG_SKY_ORANGE_R;
+        target[Y] = BG_SKY_ORANGE_G;
+        target[Z] = BG_SKY_ORANGE_B;
+        break;
 
-        default:
-            target[X] = BG_SKY_BLUE_R;
-            target[Y] = BG_SKY_BLUE_G;
-            target[Z] = BG_SKY_BLUE_B;
-            break;
+    default:
+        target[X] = BG_SKY_BLUE_R;
+        target[Y] = BG_SKY_BLUE_G;
+        target[Z] = BG_SKY_BLUE_B;
+        break;
     }
 
     // Transition to target color
     for (int component = 0; component < XYZ; component++)
     {
-        if (target[component] > CurrentSkyColor[component]) CurrentSkyColor[component]++;
-        if (target[component] < CurrentSkyColor[component]) CurrentSkyColor[component]--;
+        if (target[component] > CurrentSkyColor[component])
+            CurrentSkyColor[component]++;
+        if (target[component] < CurrentSkyColor[component])
+            CurrentSkyColor[component]--;
     }
 
     // Sets palette
-    Uint16 * colorPalette = (Uint16 *)BG_COLOR_RAM_ADR;
+    Uint16 *colorPalette = (Uint16 *)BG_COLOR_RAM_ADR;
 
-    for(int line = 0; line < JO_TV_HEIGHT; line++)
+    for (int line = 0; line < JO_TV_HEIGHT; line++)
     {
         jo_fixed multiplier = jo_sin(line / 3);
 
@@ -95,7 +97,7 @@ static void SetLineColors()
         int g = jo_fixed2int(multiplier * CurrentSkyColor[Y]);
         int b = jo_fixed2int(multiplier * CurrentSkyColor[Z]);
 
-    	colorPalette[line+32] = JO_COLOR_RGB(r, g, b);
+        colorPalette[line + 32] = JO_COLOR_RGB(r, g, b);
     }
 }
 
@@ -106,11 +108,11 @@ static void LoadLineColorTable()
     SetLineColors();
 
     // Set indexes to palette
-    Uint16 * colorPalette = (Uint16 *)BG_LINE_COLOR_TABLE;
+    Uint16 *colorPalette = (Uint16 *)BG_LINE_COLOR_TABLE;
 
-    for(int line = 0; line < JO_TV_HEIGHT; line++)
+    for (int line = 0; line < JO_TV_HEIGHT; line++)
     {
-    	colorPalette[line] = line + BG_COLOR_PAL_OFFSET;
+        colorPalette[line] = line + BG_COLOR_PAL_OFFSET;
     }
 
     // Apply line color with ration on RGB0
@@ -124,7 +126,7 @@ static void LoadLineColorTable()
 /** @brief Generate cloud
  *  @param cloud Cloud data
  */
-static void GenerateCloud(Cloud * cloud)
+static void GenerateCloud(Cloud *cloud)
 {
     jo_fixed speed = jo_int2fixed(jo_random(jo_fixed2int(BG_CLOUD_SPEED_RANGE)));
     bool top = speed > 70000;
@@ -169,7 +171,7 @@ void BackgroundInitialize()
     // Reset variables
     PlaneMovement = 0;
     NextSpawnTarget = 0;
-    
+
     for (int index = 0; index < BG_CLOUDS_MAX; index++)
     {
         Clouds[index].Visible = false;
@@ -183,9 +185,9 @@ void BackgroundInitialize()
 void BackgroundDraw()
 {
     jo_3d_push_matrix();
-	{
+    {
         jo_3d_rotate_matrix(BG_PLACEMENT_X_ANG, BG_PLACEMENT_Y_ANG, BG_PLACEMENT_Z_ANG);
-        
+
         // Draw floor
         jo_3d_push_matrix();
         {
@@ -207,8 +209,8 @@ void BackgroundDraw()
                 jo_3d_pop_matrix();
             }
         }
-	}
-	jo_3d_pop_matrix();
+    }
+    jo_3d_pop_matrix();
 }
 
 void BackgroundUdpate()

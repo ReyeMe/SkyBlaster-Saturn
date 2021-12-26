@@ -10,7 +10,7 @@
  *  @param vector Vector to measure
  *  @return Approximation of the vector length
  */
-jo_fixed ToolsFastVectorLength(const jo_vector_fixed * vector);
+jo_fixed ToolsFastVectorLength(const jo_vector_fixed *vector);
 
 /** @brief Enable specific layer
  *  @param layer Layer number

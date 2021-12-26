@@ -21,7 +21,7 @@ typedef struct
     jo_rot3D Rotation;
 
     /* Custom data */
-    void * customData;
+    void *customData;
 } FontModifier;
 
 /** @brief Initialize font
@@ -33,13 +33,13 @@ void FontInitialize();
  *  @param modifier Character rendering modifier
  *  @param customData Custom data that can be passed to the modifier
  */
-void FontPrintCentered(const char * text, void (*modifier)(const int column, const int row, FontModifier * data), void * customData);
+void FontPrintCentered(const char *text, void (*modifier)(const int column, const int row, FontModifier *data), void *customData);
 
 /** @brief Print text in 3D font
  *  @param text String to print
  *  @param modifier Character rendering modifier
  *  @param customData Custom data that can be passed to the modifier
  */
-void FontPrint(const char * text, void (*modifier)(const int column, const int row, FontModifier * data), void * customData);
+void FontPrint(const char *text, void (*modifier)(const int column, const int row, FontModifier *data), void *customData);
 
 #endif
