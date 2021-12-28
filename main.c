@@ -1,4 +1,5 @@
 #include <jo/jo.h>
+#include "analogPad.h"
 #include "pcmsys.h"
 #include "pcmstm.h"
 #include "pcmcdda.h"

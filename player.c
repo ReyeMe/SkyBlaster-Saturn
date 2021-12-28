@@ -1,4 +1,5 @@
 #include <jo/jo.h>
+#include "analogPad.h"
 #include "model.h"
 #include "font3D.h"
 #include "score.h"
@@ -244,6 +245,8 @@ PlayerActions PlayerUpdate(Player *player, int inputDeviceId)
     {
         jo_fixed forwardMovement = 0;
         jo_fixed sideMovement = 0;
+        AnalogPad analogPad;
+        AnalogPadGetData(inputDeviceId, &analogPad);
 
         if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_LEFT))
         {
@@ -253,6 +256,19 @@ PlayerActions PlayerUpdate(Player *player, int inputDeviceId)
         {
             forwardMovement -= PLAYER_VELOCITY_ACCEL;
         }
+        else if (analogPad.IsAvailable && analogPad.AxisX != 0)
+        {
+            jo_fixed multiplier = jo_int2fixed(analogPad.AxisX) / 128;
+
+            if (multiplier < 0)
+            {
+                forwardMovement -= jo_fixed_mult(multiplier, PLAYER_VELOCITY_BACK_ACCEL);
+            }
+            else
+            {
+                forwardMovement -= jo_fixed_mult(multiplier, PLAYER_VELOCITY_ACCEL);
+            }
+        }
 
         if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_UP))
         {
@@ -261,6 +277,19 @@ PlayerActions PlayerUpdate(Player *player, int inputDeviceId)
         else if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_DOWN))
         {
             sideMovement += PLAYER_VELOCITY_SIDE_ACCEL;
+        }
+        else if (analogPad.IsAvailable && analogPad.AxisY != 0)
+        {
+            jo_fixed multiplier = jo_int2fixed(analogPad.AxisY) / 128;
+
+            if (multiplier < 0)
+            {
+                sideMovement += jo_fixed_mult(multiplier, PLAYER_VELOCITY_SIDE_ACCEL);
+            }
+            else
+            {
+                sideMovement += jo_fixed_mult(multiplier, PLAYER_VELOCITY_SIDE_ACCEL);
+            }
         }
 
         if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_A) &&
