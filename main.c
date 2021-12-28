@@ -1,6 +1,7 @@
 #include <jo/jo.h>
 #include "pcmsys.h"
 #include "pcmstm.h"
+#include "pcmcdda.h"
 #include "model.h"
 #include "font3D.h"
 #include "score.h"
@@ -20,8 +21,9 @@ void MenuCreateMain(bool backButton);
 #define LWRAM (2097152)
 void *loading_system_scratch_buffer = (void *)LWRAM;
 int snd_adx = 0;
-#define MENU_MUSIC "MENU.ADX"
-#define GAME_MUSIC "GAME.ADX"
+#define MENU_MUSIC 3
+#define GAME_MUSIC 4
+#define GAME_END_MUSIC 5
 
 /* Main 3D camera */
 static jo_camera camera;
@@ -87,8 +89,6 @@ void GameCreateNew(bool backButton)
 {
     if (!backButton)
     {
-        stop_adx_stream();
-
         // Reset player data and position
         PlayerInititalize(&PlayerEntity);
         PlayerEntity.Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
@@ -108,6 +108,8 @@ void GameCreateNew(bool backButton)
         BombEffectLifeTime = -1;
 
         WidgetsClearAll();
+
+        CDDAPlaySingle(GAME_MUSIC, true);
     }
 }
 
@@ -189,6 +191,7 @@ void MenuResumeGame(bool backButton)
     {
         IsPaused = false;
         WidgetsClearAll();
+        CDDASetVolume(7, 7);
     }
 }
 
@@ -249,7 +252,8 @@ void GameExit(bool backButton)
     if (!backButton)
     {
         MenuCreateMain(backButton);
-        stop_adx_stream();
+        CDDASetVolume(7, 7);
+        CDDAPlaySingle(MENU_MUSIC, true);
     }
 }
 
@@ -264,14 +268,18 @@ void GameCreateGameOver()
     WidgetsClearAll();
 
     WidgetsCreateLabel(0, 15, "Game over");
-
+    
     sprintf(GameOverScoreLabel, "%d", PlayerEntity.Score.Value);
     WidgetsCreateLabel(0, 7, GameOverScoreLabel);
 
     WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Try again", GameCreateNew));
     WidgetsCreateButton(0, -18, "Exit", GameExit);
+
+    CDDAPlaySingle(GAME_END_MUSIC, false);
 }
 
+/** @brief Player gotr hit by a bullet or NPC
+ */
 void PlayerHit()
 {
     if (!PlayerEntity.HurtProtect)
@@ -326,6 +334,7 @@ void GameLogic()
             WidgetsCreateLabel(0, 15, "Game paused");
             WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Resume game", MenuResumeGame));
             WidgetsCreateButton(0, -18, "Exit", GameExit);
+            CDDASetVolume(4, 4);
             return;
         }
 
@@ -407,36 +416,6 @@ void GameLogic()
     }
 
     WidgetsInvokeInput();
-
-    if (IsPaused)
-    {
-        if (adx_stream.volume > 3)
-        {
-            adx_stream.volume--;
-        }
-    }
-    else
-    {
-        if (adx_stream.volume < 6)
-        {
-            adx_stream.volume++;
-        }
-    }
-
-    if (adx_stream.playing)
-    {
-        pcm_parameter_change(adx_stream.pcm_number, adx_stream.volume, 0);
-    }
-
-    // Play main menu music
-    if (!IsInGame && !IsInGameOver)
-    {
-        start_adx_stream((Sint8 *)MENU_MUSIC, adx_stream.volume);
-    }
-    else if (IsInGame || IsInGameOver)
-    {
-        start_adx_stream((Sint8 *)GAME_MUSIC, adx_stream.volume);
-    }
 }
 
 /** @brief Start game fade in effect
@@ -659,6 +638,7 @@ void GameInitialize()
  */
 void Logic()
 {
+    static bool startup = true;
     slUnitMatrix(0);
     GameLogic();
     GameDraw();
@@ -669,6 +649,12 @@ void Logic()
         jo_is_pad1_key_pressed(JO_KEY_START))
     {
         jo_goto_boot_menu();
+    }
+    
+    if (startup)
+    {
+        CDDAPlaySingle(MENU_MUSIC, true);
+        startup = false;
     }
 }
 
@@ -691,6 +677,7 @@ void jo_main(void)
     load_drv(ADX_MASTER_2304);
     snd_adx = add_adx_front_buffer(23040);
     add_adx_back_buffer((void *)LWRAM);
+    CDDAInitialize();
 
     *(volatile unsigned char *)0x060FFCD8 = 0x1F;
     jo_3d_camera_init(&camera);

@@ -18,6 +18,7 @@
     "files.associations": {
         "aabb.h": "c",
         "SL_DEF.H": "cpp",
-        "jo.h": "c"
+        "jo.h": "c",
+        "SEGA_CDC.H": "cpp"
     }
 }
