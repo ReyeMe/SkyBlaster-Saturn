@@ -11,6 +11,7 @@
 game.iso
 game.bin
 game.cue
+cd/0.bin
 
 # Linker output
 *.ilk

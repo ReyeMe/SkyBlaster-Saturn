@@ -268,7 +268,7 @@ void GameCreateGameOver()
     WidgetsClearAll();
 
     WidgetsCreateLabel(0, 15, "Game over");
-    
+
     sprintf(GameOverScoreLabel, "%d", PlayerEntity.Score.Value);
     WidgetsCreateLabel(0, 7, GameOverScoreLabel);
 
@@ -650,7 +650,7 @@ void Logic()
     {
         jo_goto_boot_menu();
     }
-    
+
     if (startup)
     {
         CDDAPlaySingle(MENU_MUSIC, true);
