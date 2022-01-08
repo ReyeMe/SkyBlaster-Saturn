@@ -22,9 +22,9 @@ void MenuCreateMain(bool backButton);
 #define LWRAM (2097152)
 void *loading_system_scratch_buffer = (void *)LWRAM;
 int snd_adx = 0;
-#define MENU_MUSIC 3
-#define GAME_MUSIC 4
-#define GAME_END_MUSIC 5
+#define MENU_MUSIC 2
+#define GAME_MUSIC 3
+#define GAME_END_MUSIC 4
 
 /* Main 3D camera */
 static jo_camera camera;

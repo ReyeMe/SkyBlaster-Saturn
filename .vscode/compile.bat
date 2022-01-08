@@ -18,6 +18,7 @@ del /Q /F /S *.elf > NUL
 del /Q /F /S *.map > NUL
 del /Q /F /S *.iso > NUL
 del /Q /F /S *.cue > NUL
+del /Q /F /S *.raw > NUL
 IF "%1" == "cleanOnly" GOTO end
 
 :compile
