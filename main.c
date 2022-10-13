@@ -50,6 +50,9 @@ static bool IsPaused = false;
 /* Indicates whether player can control the game */
 static bool IsControllable = false;
 
+/* Indicates whether game assets have loaded */
+static bool GameLoaded = false;
+
 /* Number of level player is currently at */
 static int CurrentLevel = 0;
 
@@ -561,12 +564,17 @@ void GameDraw()
  */
 void LoadingScreen()
 {
+    static int rotation = 0;
+    static jo_fixed scale = JO_FIXED_1;
+
     jo_printf(15, 20, "Loading...");
 
     jo_3d_push_matrix();
     {
         jo_3d_rotate_matrix(0, 180, -90);
         jo_3d_translate_matrix(0, 0, -60);
+        jo_3d_set_scale_fixed(scale, scale, scale);
+        jo_3d_rotate_matrix_x(rotation);
 
         for (int logoMesh = 0; logoMesh < LogoSize; logoMesh++)
         {
@@ -574,6 +582,12 @@ void LoadingScreen()
         }
     }
     jo_3d_pop_matrix();
+
+    if (GameLoaded)
+    {
+        rotation += 17;
+        scale -= 1700;
+    }
 
     // Draw PoneSound logo
     jo_printf(5, 27, "Audio powered by");
@@ -626,6 +640,9 @@ void GameInitialize()
     int temp = 0;
     PlayerMesh = ML_LoadMesh("PLAYER.TMF", JO_ROOT_DIR, &temp);
     ExplosionMesh = ML_LoadMesh("EXP.TMF", JO_ROOT_DIR, &temp);
+
+    // All base assets are loaded now
+    GameLoaded = true;
 
     // Show all other layers and turn off TV
     ToolsFadeOut(SPRON | NBG0ON, LoadingScreen);

@@ -3,10 +3,10 @@
         {
             "name": "Saturn",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/../../jo_engine/**",
-                "${workspaceFolder}/../../Compiler/**",
-                "${workspaceFolder}/../../Compiler/COMMON/SGL_302j/INC/**"
+                "./**",
+                "./../../jo_engine/**",
+                "./../../Compiler/**",
+                "./../../Compiler/COMMON/SGL_302j/INC/**"
             ],
             "defines": [
                 "_DEBUG",

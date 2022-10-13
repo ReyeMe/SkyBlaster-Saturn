@@ -14,11 +14,5 @@
         "**/*.bin": true,
         "**/*.cue": true,
         "**/*.elf": true
-    },
-    "files.associations": {
-        "aabb.h": "c",
-        "SL_DEF.H": "cpp",
-        "jo.h": "c",
-        "SEGA_CDC.H": "cpp"
     }
 }
