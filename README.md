@@ -1,3 +1,4 @@
+![SkyBlaster logo](https://reye.me/img/projects-other/skyblaster_logo.png)
 # SkyBlaster
 Shmup game for sega saturn  
 Made for [SEGA Saturn 27th Anniversary Game Competition](https://segaxtreme.net/threads/sega-saturn-27th-anniversary-game-competition-discussion-thread.25011/)  
