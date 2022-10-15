@@ -104,6 +104,20 @@ void PickupCreate(const jo_pos3D_fixed *pos, const PickupType type)
     Pickup *pickup = (Pickup *)jo_malloc(sizeof(Pickup));
     pickup->Pos.x = pos->x;
     pickup->Pos.y = pos->y;
+    pickup->Velocity.x = 0;
+    pickup->Velocity.y = 0;
+    pickup->Type = type;
+
+    jo_list_add_ptr(&Pickups, pickup);
+}
+
+void PickupCreateWithVelocity(const jo_pos3D_fixed *pos, jo_vector_fixed *velocity, const PickupType type)
+{
+    Pickup *pickup = (Pickup *)jo_malloc(sizeof(Pickup));
+    pickup->Pos.x = pos->x;
+    pickup->Pos.y = pos->y;
+    pickup->Velocity.x = velocity->x;
+    pickup->Velocity.y = velocity->y;
     pickup->Type = type;
 
     jo_list_add_ptr(&Pickups, pickup);
@@ -121,17 +135,29 @@ void PickupUpdate(Player *player)
     for (tmp = Pickups.first; tmp != JO_NULL; tmp = tmp->next)
     {
         Pickup *pickup = (Pickup *)tmp->data.ptr;
-        pickup->Pos.x += JO_FIXED_1 + JO_FIXED_1_DIV_2;
+        pickup->Pos.x += pickup->Velocity.x + JO_FIXED_1 + JO_FIXED_1_DIV_2;
+        pickup->Pos.y += pickup->Velocity.y;
+
+        pickup->Velocity.x = pickup->Velocity.x - (pickup->Velocity.x / 16);
+        pickup->Velocity.y = pickup->Velocity.y - (pickup->Velocity.y / 16);
 
         if (CheckPickupAgainstPlayer(pickup, player))
         {
             CollectPickup(pickup, player);
             jo_list_free_and_remove(&Pickups, tmp);
         }
+        else if ((pickup->Pos.y < PICKUP_DESPAWN_AREA_Y_NEG))
+        {
+            pickup->Pos.y += PICKUP_DESPAWN_AREA_Y_NEG - pickup->Pos.y;
+            pickup->Velocity.y *= -1;
+        }
+        else if ((pickup->Pos.y > PICKUP_DESPAWN_AREA_Y_POS))
+        {
+            pickup->Pos.y += PICKUP_DESPAWN_AREA_Y_POS - pickup->Pos.y;
+            pickup->Velocity.y *= -1;
+        }
         else if ((pickup->Pos.x > PICKUP_DESPAWN_AREA_X) ||
-                 (pickup->Pos.x < PICKUP_SPAWN_AREA_X) ||
-                 (pickup->Pos.y > PICKUP_DESPAWN_AREA_Y_POS) ||
-                 (pickup->Pos.y < PICKUP_DESPAWN_AREA_Y_NEG))
+                 (pickup->Pos.x < PICKUP_SPAWN_AREA_X))
         {
             jo_list_free_and_remove(&Pickups, tmp);
         }

@@ -22,6 +22,9 @@ typedef struct
     /* Pickup location */
     jo_pos2D_fixed Pos;
 
+    /* Pickup velocity */
+    jo_vector_fixed Velocity;
+
     /* Pickup type */
     PickupType Type;
 } Pickup;
@@ -35,6 +38,13 @@ void PickupInitialize();
  *  @param type Pickup type
  */
 void PickupCreate(const jo_pos3D_fixed *pos, const PickupType type);
+
+/** @brief Create pickup
+ *  @param pos Pickup location
+ *  @param velocity Pickup velocity
+ *  @param type Pickup type
+ */
+void PickupCreateWithVelocity(const jo_pos3D_fixed *pos, jo_vector_fixed *velocity, const PickupType type);
 
 /** @brief Clear all pickups from screen
  */
