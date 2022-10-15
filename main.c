@@ -282,7 +282,7 @@ void GameCreateGameOver()
     CDDAPlaySingle(GAME_END_MUSIC, false);
 }
 
-/** @brief Player gotr hit by a bullet or NPC
+/** @brief Player got hit by a bullet or NPC
  */
 void PlayerHit()
 {
@@ -297,8 +297,42 @@ void PlayerHit()
         }
         else
         {
+            int bombsToDisperse = PlayerEntity.Bombs / 2;
+            PlayerEntity.Bombs -= bombsToDisperse;
+
+            // Drop half the bombs player has collected
+            for (int bomb = 0; bomb < bombsToDisperse; bomb++)
+            {
+                int adder = bomb % 2 == 0 ? JO_FIXED_PI_DIV_2 : 0;
+                int angle = (jo_random(6)<<14);
+
+                jo_vector_fixed velocity = {
+                    -jo_fixed_sin(adder + angle) << 2,
+                    -jo_fixed_cos(adder + angle) << 2,
+                    0
+                };
+
+                PickupCreateWithVelocity(&PlayerEntity.Pos, &velocity, PickupTypeBomb);
+            }
+
+            // Drop players gun
+            if (PlayerEntity.GunLevel > 0)
+            {
+                int angle = (jo_random(12)<<14);
+
+                jo_vector_fixed velocity = {
+                    -jo_fixed_sin(angle) << 2,
+                    -jo_fixed_cos(angle) << 2,
+                    0
+                };
+
+                PickupCreateWithVelocity(&PlayerEntity.Pos, &velocity, PickupTypeGun);
+                PlayerEntity.GunLevel--;
+            }
+
             IsControllable = false;
             CurrentLevelTitleTick = 1;
+            PlayerEntity.HurtProtect = true;
             PlayerEntity.Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
         }
     }
@@ -351,68 +385,68 @@ void GameLogic()
         {
             // Protect player at start of game
             PlayerEntity.HurtProtect = CurrentLevelTitleTick < 350;
-
-            // Debug random enemy generator
-            debug++;
-            if (debug2 < debug && CurrentLevelTitleTick >= 350)
-            {
-                int spawnCount = jo_random(3);
-
-                for (int i = 0; i < spawnCount; i++)
-                {
-                    jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
-                    NpcCreate(jo_random(4) - 1, &pos);
-
-                    debug2 = 40 + jo_random(50);
-                    debug = 0;
-                }
-            }
-
+            
             PlayerActions action = PlayerUpdate(&PlayerEntity, 0);
-
+    
             // Do player actions
             if (action == PlayerActionShoot)
             {
                 // Shoot
                 PlayerShoot();
             }
-
+    
             if (action == PlayerActionBomb)
             {
                 // start effect
                 BombEffectLifeTime = 0;
             }
+        }
 
-            // Update NPCs
-            int collectedScore = NpcUpdate(&PlayerEntity, PlayerHit);
+        // Debug random enemy generator
+        debug++;
+        if (debug2 < debug && CurrentLevelTitleTick >= 350)
+        {
+            int spawnCount = jo_random(3);
 
-            if (collectedScore > 0)
+            for (int i = 0; i < spawnCount; i++)
             {
-                ScoreAddValue(&PlayerEntity.Score, collectedScore);
+                jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
+                NpcCreate(jo_random(4) - 1, &pos);
+
+                debug2 = 40 + jo_random(50);
+                debug = 0;
             }
+        }
 
-            // Update player bullets
-            BulletListUpdate(ReadBulletPositions);
+        // Update NPCs
+        int collectedScore = NpcUpdate(&PlayerEntity, PlayerHit);
 
-            // Update pickups
-            PickupUpdate(&PlayerEntity);
+        if (collectedScore > 0)
+        {
+            ScoreAddValue(&PlayerEntity.Score, collectedScore);
+        }
 
-            // Update bomb effect
-            if (BombEffectLifeTime > -1)
+        // Update player bullets
+        BulletListUpdate(ReadBulletPositions);
+
+        // Update pickups
+        PickupUpdate(&PlayerEntity);
+
+        // Update bomb effect
+        if (BombEffectLifeTime > -1)
+        {
+            BombEffectLifeTime++;
+
+            // Clear all enemy bullets
+            int range = (BombEffectLifeTime << 16) * 8;
+            BulletListClearEnemyBulletsInRange(&PlayerEntity.Pos, range);
+
+            // Destroy all NPCs in range and add score
+            ScoreAddValue(&PlayerEntity.Score, NpcDestroyAllInRange(&PlayerEntity.Pos, range));
+
+            if (BombEffectLifeTime > PLAYER_ACTION_BOMB)
             {
-                BombEffectLifeTime++;
-
-                // Clear all enemy bullets
-                int range = (BombEffectLifeTime << 16) * 8;
-                BulletListClearEnemyBulletsInRange(&PlayerEntity.Pos, range);
-
-                // Destroy all NPCs in range and add score
-                ScoreAddValue(&PlayerEntity.Score, NpcDestroyAllInRange(&PlayerEntity.Pos, range));
-
-                if (BombEffectLifeTime > PLAYER_ACTION_BOMB)
-                {
-                    BombEffectLifeTime = -1;
-                }
+                BombEffectLifeTime = -1;
             }
         }
 
