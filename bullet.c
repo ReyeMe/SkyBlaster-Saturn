@@ -1,4 +1,5 @@
 #include <jo/jo.h>
+#include "tools.h"
 #include "bullet.h"
 
 // -------------------------------------
@@ -13,6 +14,11 @@ static int FirstSpriteIndex = 0;
 // Public
 // -------------------------------------
 
+void BulletInitializeMesh(Bullet * bullet)
+{
+    CreateSpriteQuad(&bullet->Mesh, FirstSpriteIndex + bullet->Type);
+}
+
 void BulletLoadAssets()
 {
     FirstSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "PB.TGA", JO_COLOR_Black);
@@ -26,8 +32,7 @@ void BulletDraw(Bullet *bullet)
     {
         // ship X range back 40 (y transform)
         jo_3d_translate_matrix_fixed(bullet->Pos.x, bullet->Pos.y, 0);
-
-        jo_3d_draw_sprite(FirstSpriteIndex + bullet->Type);
+        jo_3d_draw(&bullet->Mesh);
     }
     jo_3d_pop_matrix();
 }

@@ -7,10 +7,10 @@
 // -------------------------------------
 
 /* Contains meshes for all numeric character */
-static jo_3d_mesh *numerics;
+static SaturnMesh numerics;
 
 /* Contains meshes for all letter charactes */
-static jo_3d_mesh *letters;
+static SaturnMesh letters;
 
 // -------------------------------------
 // Public
@@ -20,25 +20,23 @@ void FontInitialize()
 {
     int index = 0;
     Uint32 face = 0;
-    int loaded = 0;
-    numerics = ML_LoadMesh("FNTNUM.TMF", "MODELS", &loaded);
+    TmfLoadMesh(&numerics, "FNTNUM.TMF", "MODELS");
 
-    for (index = 0; index < loaded; index++)
+    for (index = 0; index < numerics.MeshCount; index++)
     {
-        for (face = 0; face < numerics[index].data.nbPolygon; face++)
+        for (face = 0; face < numerics.Meshes[index].data.nbPolygon; face++)
         {
-            numerics[index].data.attbl[face].sort = SORT_MAX;
+            numerics.Meshes[index].data.attbl[face].sort = SORT_MAX;
         }
     }
 
-    loaded = 0;
-    letters = ML_LoadMesh("FNTLET.TMF", "MODELS", &loaded);
+    TmfLoadMesh(&letters, "FNTLET.TMF", "MODELS");
 
-    for (index = 0; index < loaded; index++)
+    for (index = 0; index < letters.MeshCount; index++)
     {
-        for (face = 0; face < letters[index].data.nbPolygon; face++)
+        for (face = 0; face < letters.Meshes[index].data.nbPolygon; face++)
         {
-            letters[index].data.attbl[face].sort = SORT_MAX;
+            letters.Meshes[index].data.attbl[face].sort = SORT_MAX;
         }
     }
 }
@@ -68,16 +66,16 @@ void FontPrintCentered(const char *text, void (*modifier)(const int column, cons
 
         if (current >= FONT_NUM_START && current <= FONT_NUM_END)
         {
-            character = &numerics[current - FONT_NUM_START];
+            character = &numerics.Meshes[current - FONT_NUM_START];
         }
         else if (current >= FONT_LET_UP_START && current <= FONT_LET_UP_END)
         {
-            character = &letters[current - FONT_LET_UP_START];
+            character = &letters.Meshes[current - FONT_LET_UP_START];
         }
         else if (current >= FONT_LET_START && current <= FONT_LET_END)
         {
             // Only upper case
-            character = &letters[current - FONT_LET_START];
+            character = &letters.Meshes[current - FONT_LET_START];
         }
 
         if (character != JO_NULL)
@@ -131,16 +129,16 @@ void FontPrint(const char *text, void (*modifier)(const int column, const int ro
 
         if (current >= FONT_NUM_START && current <= FONT_NUM_END)
         {
-            character = &numerics[current - FONT_NUM_START];
+            character = &numerics.Meshes[current - FONT_NUM_START];
         }
         else if (current >= FONT_LET_UP_START && current <= FONT_LET_UP_END)
         {
-            character = &letters[current - FONT_LET_UP_START];
+            character = &letters.Meshes[current - FONT_LET_UP_START];
         }
         else if (current >= FONT_LET_START && current <= FONT_LET_END)
         {
             // Only upper case
-            character = &letters[current - FONT_LET_START];
+            character = &letters.Meshes[current - FONT_LET_START];
         }
 
         if (character != JO_NULL)

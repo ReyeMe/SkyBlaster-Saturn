@@ -50,10 +50,14 @@ void PickupCreateWithVelocity(const jo_pos3D_fixed *pos, jo_vector_fixed *veloci
  */
 void PickupClearAll();
 
-/** @brief Update pickups on screen
+/** @brief Check whether player has picked up something
  *  @param player Current player
  */
-void PickupUpdate(Player *player);
+void PickupCheckAgainstPlayer(Player *player);
+
+/** @brief Update pickups on screen
+ */
+void PickupUpdate();
 
 /** @brief Draw pickups on screen
  */

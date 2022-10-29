@@ -32,7 +32,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
 
         if (player->Lives >= 9)
         {
-            ScoreAddValue(&player->Score, 400);
+            //ScoreAddValue(&player->Score, 400);
         }
         else
         {
@@ -45,7 +45,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
 
         if (player->GunLevel >= 2)
         {
-            ScoreAddValue(&player->Score, 25);
+            //ScoreAddValue(&player->Score, 25);
         }
         else
         {
@@ -58,7 +58,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
 
         if (player->Bombs >= 9)
         {
-            ScoreAddValue(&player->Score, 200);
+            //ScoreAddValue(&player->Score, 200);
         }
         else
         {
@@ -128,7 +128,23 @@ void PickupClearAll()
     jo_list_free_and_clear(&Pickups);
 }
 
-void PickupUpdate(Player *player)
+void PickupCheckAgainstPlayer(Player *player)
+{
+    jo_node *tmp;
+
+    for (tmp = Pickups.first; tmp != JO_NULL; tmp = tmp->next)
+    {
+        Pickup *pickup = (Pickup *)tmp->data.ptr;
+
+        if (CheckPickupAgainstPlayer(pickup, player))
+        {
+            CollectPickup(pickup, player);
+            jo_list_free_and_remove(&Pickups, tmp);
+        }
+    }
+}
+
+void PickupUpdate()
 {
     jo_node *tmp;
 
@@ -141,12 +157,7 @@ void PickupUpdate(Player *player)
         pickup->Velocity.x = pickup->Velocity.x - (pickup->Velocity.x / 16);
         pickup->Velocity.y = pickup->Velocity.y - (pickup->Velocity.y / 16);
 
-        if (CheckPickupAgainstPlayer(pickup, player))
-        {
-            CollectPickup(pickup, player);
-            jo_list_free_and_remove(&Pickups, tmp);
-        }
-        else if ((pickup->Pos.y < PICKUP_DESPAWN_AREA_Y_NEG))
+        if ((pickup->Pos.y < PICKUP_DESPAWN_AREA_Y_NEG))
         {
             pickup->Pos.y += PICKUP_DESPAWN_AREA_Y_NEG - pickup->Pos.y;
             pickup->Velocity.y *= -1;

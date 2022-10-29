@@ -33,6 +33,7 @@ static void BulletListUpdateInternal(jo_node *node, BulletListCallback callback,
     if (BulletUpdate(bullet))
     {
         // remove bullet
+        FreeSpriteQuadData(&bullet->Mesh);
         jo_free(bullet);
 
         if (isPlayer)
@@ -60,6 +61,7 @@ static void BulletListClearInternal(jo_list *list)
     for (tmp = list->first; tmp != JO_NULL; tmp = tmp->next)
     {
         Bullet *bullet = (Bullet *)tmp->data.ptr;
+        FreeSpriteQuadData(&bullet->Mesh);
         jo_free(bullet);
         jo_list_remove(list, tmp);
     }
@@ -130,6 +132,7 @@ void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed *pos, const jo_fixe
 
         if (distance < range)
         {
+            FreeSpriteQuadData(&bullet->Mesh);
             jo_list_free_and_remove(&EnemyBullets, node);
         }
     }

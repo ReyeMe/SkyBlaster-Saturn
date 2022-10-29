@@ -35,7 +35,8 @@ int ScoreAddValue(Score *score, int value);
 
 /** @brief Draw score text
  *  @param score Score data
+ *  @param loc Location
  */
-void ScoreDraw(Score *score);
+void ScoreDraw(Score *score, int loc);
 
 #endif

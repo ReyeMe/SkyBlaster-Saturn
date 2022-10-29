@@ -7,7 +7,7 @@
  * @param count Total number of textures to load
  * @return Index of first loaded texture
  */
-static int ML_BasicTextureLoader(TmfTexture *texture, const char *modelDir, int count)
+static int TmfBasicTextureLoader(TmfTexture *texture, const char *modelDir, int count)
 {
     int startIndex = -1;
 
@@ -28,12 +28,12 @@ static int ML_BasicTextureLoader(TmfTexture *texture, const char *modelDir, int 
     return startIndex;
 }
 
-jo_3d_mesh *ML_LoadMesh(const char *file, const char *dir, int *loaded)
+void TmfLoadMesh(SaturnMesh * mesh,const char *file, const char *dir)
 {
-    return ML_LoadMeshWithCustomTextureLoader(file, dir, &ML_BasicTextureLoader, loaded);
+    TmfLoadMeshWithCustomTextureLoader(mesh, file, dir, &TmfBasicTextureLoader);
 }
 
-jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir, int (*texture_loader)(TmfTexture *, const char *, int), int *loaded)
+void TmfLoadMeshWithCustomTextureLoader(SaturnMesh * mesh,const char *file, const char *dir, int (*texture_loader)(TmfTexture *, const char *, int))
 {
     int face;
     int model;
@@ -53,8 +53,8 @@ jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir
     stream += sizeof(TmfTexture) * header->TextureCount;
 
     // Load meshes
-    jo_3d_mesh *meshes = jo_malloc(sizeof(jo_3d_mesh) * header->ModelCount);
-    *loaded = header->ModelCount;
+    mesh->Meshes = jo_malloc_with_behaviour(sizeof(jo_3d_mesh) * header->ModelCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+    mesh->MeshCount = header->ModelCount;
 
     for (model = 0; model < header->ModelCount; model++)
     {
@@ -62,18 +62,18 @@ jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir
         TmfModelHeader *modelHeader = (TmfModelHeader *)stream;
         stream += sizeof(TmfModelHeader);
 
-        meshes[model].data.pntbl = jo_malloc(sizeof(POINT) * modelHeader->VerticesCount);
-        meshes[model].data.pltbl = jo_malloc(sizeof(POLYGON) * modelHeader->FaceCount);
-        meshes[model].data.attbl = jo_malloc(sizeof(ATTR) * modelHeader->FaceCount);
-        meshes[model].data.nbPoint = modelHeader->VerticesCount;
-        meshes[model].data.nbPolygon = modelHeader->FaceCount;
+        mesh->Meshes[model].data.pntbl = jo_malloc_with_behaviour(sizeof(POINT) * modelHeader->VerticesCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        mesh->Meshes[model].data.pltbl = jo_malloc_with_behaviour(sizeof(POLYGON) * modelHeader->FaceCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        mesh->Meshes[model].data.attbl = jo_malloc_with_behaviour(sizeof(ATTR) * modelHeader->FaceCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        mesh->Meshes[model].data.nbPoint = modelHeader->VerticesCount;
+        mesh->Meshes[model].data.nbPolygon = modelHeader->FaceCount;
 
         // Read vertices
         for (point = 0; point < modelHeader->VerticesCount; point++)
         {
             for (int xyz = 0; xyz < XYZ; xyz++)
             {
-                meshes[model].data.pntbl[point][xyz] = (FIXED)(((*(stream)) << 24) | ((*(stream + 1)) << 16) | ((*(stream + 2)) << 8) | (*(stream + 3)));
+                mesh->Meshes[model].data.pntbl[point][xyz] = (FIXED)(((*(stream)) << 24) | ((*(stream + 1)) << 16) | ((*(stream + 2)) << 8) | (*(stream + 3)));
                 stream += 4;
             }
         }
@@ -89,11 +89,11 @@ jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir
 
             // Load normal
             for (coord = 0; coord < 3; coord++)
-                meshes[model].data.pltbl[face].norm[coord] = faceData->Normal[coord];
+                mesh->Meshes[model].data.pltbl[face].norm[coord] = faceData->Normal[coord];
 
             // Load quad
             for (point = 0; point < 4; point++)
-                meshes[model].data.pltbl[face].Vertices[point] = faceData->Indexes[point];
+                mesh->Meshes[model].data.pltbl[face].Vertices[point] = faceData->Indexes[point];
 
             // Load attributes
             unsigned short color = No_Palet;
@@ -119,10 +119,30 @@ jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir
                 (texture.FileName[0] == '\0' ? sprPolygon : sprNoflip),
                 No_Option);
 
-            meshes[model].data.attbl[face] = attribute;
+            mesh->Meshes[model].data.attbl[face] = attribute;
         }
     }
 
     jo_free(startAddress);
-    return meshes;
+}
+
+void TmfDraw(const SaturnMesh * mesh)
+{
+    for (int i = 0; i < mesh->MeshCount; i++)
+    {
+        jo_3d_mesh_draw(&mesh->Meshes[i]);
+    }
+}
+
+void TmfFree(const SaturnMesh * mesh)
+{
+    for (int i = 0; i < mesh->MeshCount; i++)
+    {
+        jo_free(mesh->Meshes[i].data.attbl);
+        jo_free(mesh->Meshes[i].data.pltbl);
+        jo_free(mesh->Meshes[i].data.pntbl);
+    }
+    
+    jo_free(mesh->Meshes);
+    jo_free(mesh);
 }

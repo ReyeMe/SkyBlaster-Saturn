@@ -10,6 +10,31 @@
 // Internal
 // -------------------------------------
 
+/**
+ * @brief Get the Nth Valid Controller identifier
+ * @param controllerId Requested controller number
+ * @return Controller id
+ */
+int GetNthValidController(const int controllerId)
+{
+    int found = 0;
+
+    for (int controller = 0; controller < JO_INPUT_MAX_DEVICE; controller++)
+    {
+        if (jo_is_input_available(controller))
+        {
+            if (found == controllerId)
+            {
+                return controller;
+            }
+
+            found++;
+        }
+    }
+
+    return -1;
+}
+
 /** @brief Internal function to update movement on X axis
  *  @param player Player entity
  *  @param forwardMovement Amount the player moves forward in one frame
@@ -170,7 +195,7 @@ void PlayerInititalize(Player *player)
     player->Velocity.y = 0;
     player->Velocity.z = 0;
 
-    player->Pos.x = PLAYER_SPAWN_X;
+    player->Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
     player->Pos.y = PLAYER_SPAWN_Y;
     player->Pos.z = 0;
 
@@ -179,9 +204,11 @@ void PlayerInititalize(Player *player)
     player->GunLevel = 0;
     player->Lives = 2;
     player->Bombs = 2;
-    player->HurtProtect = true;
+    player->HurtProtect = false;
 
-    ScoreInitialize(&player->Score);
+    player->StateData.BombEffectLifeTime = -1;
+    player->StateData.IsControllable = true;
+    player->StateData.SpawnTick = 0;
 
     for (int action = 0; action < PlayerActionCount - 1; action++)
     {
@@ -189,22 +216,9 @@ void PlayerInititalize(Player *player)
     }
 }
 
-void PlayerDraw(Player *player, jo_3d_mesh *mesh)
+void PlayerDraw(Player *player, SaturnMesh *mesh)
 {
-    static int counter = 0;
-    static bool lastStatus = false;
-
-    if ((counter > 20 && player->HurtProtect) || (!player->HurtProtect && !lastStatus))
-    {
-        counter = 0;
-
-        for (int i = 0; i < PLAYER_MESH_COUNT; i++)
-        {
-            jo_3d_set_mesh_screen_doors(&mesh[i], lastStatus);
-        }
-
-        lastStatus = !lastStatus;
-    }
+    static int rotation = 0;
 
     jo_3d_push_matrix();
     {
@@ -217,19 +231,35 @@ void PlayerDraw(Player *player, jo_3d_mesh *mesh)
         if (player->PitchAngle != 0)
             jo_3d_rotate_matrix_y(player->PitchAngle);
 
-        for (int i = 0; i < PLAYER_MESH_COUNT; i++)
+        for (int i = 0; i < mesh->MeshCount; i++)
         {
-            jo_3d_mesh_draw(&mesh[i]);
+            if (i > 0)
+            {
+                jo_3d_push_matrix();
+                {
+                    jo_3d_set_scale_fixed(JO_FIXED_1 - (player->Velocity.x >> 2), JO_FIXED_1, JO_FIXED_1);
+                    jo_3d_rotate_matrix_x(i > 1 ? -rotation : rotation);
+                    jo_3d_mesh_draw(&mesh->Meshes[i]);
+                }
+                jo_3d_pop_matrix();
+            }
+            else
+            {
+                jo_3d_mesh_draw(&mesh->Meshes[i]);
+            }
         }
     }
     jo_3d_pop_matrix();
 
-    counter++;
+    rotation = rotation > 360 ? 0 : rotation + 15;
 }
 
-PlayerActions PlayerUpdate(Player *player, int inputDeviceId)
+PlayerActions PlayerUpdate(Player *player, int input)
 {
+    int inputDeviceId = GetNthValidController(input);
     PlayerActions action = PlayerActionNone;
+    jo_fixed forwardMovement = 0;
+    jo_fixed sideMovement = 0;
 
     // Cooldown countdown
     for (int actionIndex = 0; actionIndex < PlayerActionCount - 1; actionIndex++)
@@ -241,87 +271,88 @@ PlayerActions PlayerUpdate(Player *player, int inputDeviceId)
     }
 
     // Handle controller input
-    if (jo_is_input_available(inputDeviceId))
+    if (inputDeviceId >= 0)
     {
-        jo_fixed forwardMovement = 0;
-        jo_fixed sideMovement = 0;
-        AnalogPad analogPad;
-        AnalogPadGetData(inputDeviceId, &analogPad);
+        if (jo_is_input_available(inputDeviceId))
+        {
+            AnalogPad analogPad;
+            AnalogPadGetData(inputDeviceId, &analogPad);
 
-        if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_LEFT))
-        {
-            forwardMovement += PLAYER_VELOCITY_BACK_ACCEL;
-        }
-        else if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_RIGHT))
-        {
-            forwardMovement -= PLAYER_VELOCITY_ACCEL;
-        }
-        else if (analogPad.IsAvailable && analogPad.AxisX != 0)
-        {
-            jo_fixed multiplier = jo_int2fixed(analogPad.AxisX) / 128;
-
-            if (multiplier < 0)
+            if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_LEFT))
             {
-                forwardMovement -= jo_fixed_mult(multiplier, PLAYER_VELOCITY_BACK_ACCEL);
+                forwardMovement += PLAYER_VELOCITY_BACK_ACCEL;
             }
-            else
+            else if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_RIGHT))
             {
-                forwardMovement -= jo_fixed_mult(multiplier, PLAYER_VELOCITY_ACCEL);
+                forwardMovement -= PLAYER_VELOCITY_ACCEL;
             }
-        }
-
-        if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_UP))
-        {
-            sideMovement -= PLAYER_VELOCITY_SIDE_ACCEL;
-        }
-        else if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_DOWN))
-        {
-            sideMovement += PLAYER_VELOCITY_SIDE_ACCEL;
-        }
-        else if (analogPad.IsAvailable && analogPad.AxisY != 0)
-        {
-            jo_fixed multiplier = jo_int2fixed(analogPad.AxisY) / 128;
-
-            if (multiplier < 0)
+            else if (analogPad.IsAvailable && analogPad.AxisX != 0)
             {
-                sideMovement += jo_fixed_mult(multiplier, PLAYER_VELOCITY_SIDE_ACCEL);
+                jo_fixed multiplier = jo_int2fixed(analogPad.AxisX) / 128;
+
+                if (multiplier < 0)
+                {
+                    forwardMovement -= jo_fixed_mult(multiplier, PLAYER_VELOCITY_BACK_ACCEL);
+                }
+                else
+                {
+                    forwardMovement -= jo_fixed_mult(multiplier, PLAYER_VELOCITY_ACCEL);
+                }
             }
-            else
+
+            if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_UP))
             {
-                sideMovement += jo_fixed_mult(multiplier, PLAYER_VELOCITY_SIDE_ACCEL);
+                sideMovement -= PLAYER_VELOCITY_SIDE_ACCEL;
+            }
+            else if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_DOWN))
+            {
+                sideMovement += PLAYER_VELOCITY_SIDE_ACCEL;
+            }
+            else if (analogPad.IsAvailable && analogPad.AxisY != 0)
+            {
+                jo_fixed multiplier = jo_int2fixed(analogPad.AxisY) / 128;
+
+                if (multiplier < 0)
+                {
+                    sideMovement += jo_fixed_mult(multiplier, PLAYER_VELOCITY_SIDE_ACCEL);
+                }
+                else
+                {
+                    sideMovement += jo_fixed_mult(multiplier, PLAYER_VELOCITY_SIDE_ACCEL);
+                }
+            }
+
+            if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_A) &&
+                player->ActionCooldown[PlayerActionShoot - 1] <= 0)
+            {
+                action = PlayerActionShoot;
+                player->ActionCooldown[PlayerActionShoot - 1] = PLAYER_ACTION_SHOOT;
+            }
+            else if (jo_is_input_key_down(inputDeviceId, JO_KEY_B) &&
+                     player->Bombs > 0 &&
+                     player->ActionCooldown[PlayerActionBomb - 1] <= 0)
+            {
+                action = PlayerActionBomb;
+
+                // Take cost of a bomb from score and set cooldown timer
+                player->Bombs--;
+                player->ActionCooldown[PlayerActionBomb - 1] = PLAYER_ACTION_BOMB;
             }
         }
+    }
 
-        if (jo_is_input_key_pressed(inputDeviceId, JO_KEY_A) &&
-            player->ActionCooldown[PlayerActionShoot - 1] <= 0)
-        {
-            action = PlayerActionShoot;
-            player->ActionCooldown[PlayerActionShoot - 1] = PLAYER_ACTION_SHOOT;
-        }
-        else if (jo_is_input_key_down(inputDeviceId, JO_KEY_B) &&
-                 player->Bombs > 0 &&
-                 player->ActionCooldown[PlayerActionBomb - 1] <= 0)
-        {
-            action = PlayerActionBomb;
+    // Update movement
+    PlayerIntUpdateMovementSide(player, sideMovement);
+    PlayerIntUpdateMovementThrust(player, forwardMovement);
 
-            // Take cost of a bomb from score and set cooldown timer
-            player->Bombs--;
-            player->ActionCooldown[PlayerActionBomb - 1] = PLAYER_ACTION_BOMB;
-        }
-
-        // Update movement
-        PlayerIntUpdateMovementSide(player, sideMovement);
-        PlayerIntUpdateMovementThrust(player, forwardMovement);
-
-        // Clamp side movement animation
-        if (player->TiltAngle >= PLAYER_MAX_TILT)
-        {
-            player->TiltAngle = PLAYER_MAX_TILT;
-        }
-        else if (player->TiltAngle <= -PLAYER_MAX_TILT)
-        {
-            player->TiltAngle = -PLAYER_MAX_TILT;
-        }
+    // Clamp side movement animation
+    if (player->TiltAngle >= PLAYER_MAX_TILT)
+    {
+        player->TiltAngle = PLAYER_MAX_TILT;
+    }
+    else if (player->TiltAngle <= -PLAYER_MAX_TILT)
+    {
+        player->TiltAngle = -PLAYER_MAX_TILT;
     }
 
     return action;

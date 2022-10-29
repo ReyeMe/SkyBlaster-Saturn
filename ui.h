@@ -1,7 +1,7 @@
 #ifndef __UI_H__
 #define __UI_H__
 
-/* Widget messages */
+/** @brief Widget messages */
 typedef enum WidgetMessages
 {
     /* Empty message */
@@ -26,8 +26,7 @@ typedef enum WidgetMessages
     WIDGET_DESELECTED = 6
 } WidgetMessages;
 
-/*
- * UI widget element
+/** @brief UI widget element
  */
 typedef struct _W_widget WidgetsWidget;
 typedef struct _W_widget
@@ -53,17 +52,27 @@ typedef struct _W_widget
     bool IsSelectable;
 } WidgetsWidget;
 
-/* Delete widget
+/** @brief Delete widget
  * @param widget Widget to delete
  */
 void WidgetsClear(WidgetsWidget *widget);
 
-/* Clear all controls
+/** @brief Get widget by its identifier
+ * @param id Widget ID (ids indicate index of the widget on screen)
+ * @return WidgetsWidget* Widget data
+ */
+WidgetsWidget *WidgetsById(int id);
+
+/** @brief Get widget id
+ * @param widget Find id of this widget
+ */
+int WidgetsGetId(const WidgetsWidget * widget);
+
+/** @brief Clear all controls
  */
 void WidgetsClearAll();
 
-/*
- * Create widget and register it
+/** @brief Create widget and register it
  * @param x Widget X position
  * @param y Widget Y position
  * @param wProc Widget message process function
@@ -71,8 +80,7 @@ void WidgetsClearAll();
  */
 WidgetsWidget *WidgetsCreate(int x, int y, void (*wProc)(WidgetsWidget *, WidgetMessages));
 
-/*
- * Create widget and register it
+/** @brief Create widget and register it
  * @param x Widget X position
  * @param y Widget Y position
  * @param wProc Widget message process function
@@ -81,29 +89,29 @@ WidgetsWidget *WidgetsCreate(int x, int y, void (*wProc)(WidgetsWidget *, Widget
  */
 WidgetsWidget *WidgetsCreateWithData(int x, int y, void (*wProc)(WidgetsWidget *, WidgetMessages), void *data);
 
-/* Sends process input message to currently selected widget*/
+/** @brief Sends process input message to currently selected widget*/
 void WidgetsInvokeInput();
 
-/* Get list of all widget nodes */
+/** @brief Get list of all widget nodes */
 jo_list *WidgetsGetAll();
 
-/* Get current widget node */
+/** @brief Get current widget node */
 WidgetsWidget *WidgetsGetCurrent();
 
-/* Get next available widget node */
+/** @brief Get next available widget node */
 WidgetsWidget *WidgetsGetNextSelectable();
 
 /* Get previous available widget node */
 WidgetsWidget *WidgetsGetPrevSelectable();
 
-/* Initialize UI */
+/** @brief Initialize UI */
 void WidgetsInitialize();
 
-/* Sends redraw message to visible widgets */
+/** @brief Sends redraw message to visible widgets */
 void WidgetsRedraw();
 
-/* Set active widget node
- * @widget Widget to set as active
+/** @brief Set active widget node
+ * @param widget Widget to set as active
  * @return True on success
  */
 bool WidgetsSetCurrent(WidgetsWidget *widget);

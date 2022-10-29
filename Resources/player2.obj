@@ -1,6 +1,6 @@
-# Blender v2.79 (sub 0) OBJ File: 'player.blend'
+# Blender v2.79 (sub 0) OBJ File: 'player2.blend'
 # www.blender.org
-mtllib player.mtl
+mtllib player2.mtl
 o C_Cube.002
 v 7.712106 3.380500 0.000000
 v 3.244193 1.326540 0.000000

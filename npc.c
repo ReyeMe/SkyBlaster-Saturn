@@ -24,10 +24,7 @@ static jo_list Npcs;
 static jo_list Explosions;
 
 /* Available NPC meshes */
-static jo_3d_mesh *NpcMeshes[3];
-
-/* Available NPC mesh sizes */
-static int NpcMeshSizes[3];
+static SaturnMesh NpcMeshes[3];
 
 /* Index of first explosion sprite */
 static int ExplosionSpriteStartIndex;
@@ -37,7 +34,7 @@ static int ExplosionSpriteStartIndex;
  *  @param spawnExplosion When true, will spawn explosion where NPC was
  *  @return total score of all destroyed NPCs
  */
-static int ListClearInternal(jo_list *list, bool spawnExplosion)
+static int ListClearInternal(jo_list *list, bool spawnExplosion, bool clearingExplosionList)
 {
     int collectedScore = 0;
     jo_node *tmp;
@@ -53,6 +50,11 @@ static int ListClearInternal(jo_list *list, bool spawnExplosion)
 
             // Create explosion particle
             NpcSpawnExplosion(&((Npc *)data)->Pos);
+        }
+
+        if (clearingExplosionList)
+        {
+            FreeSpriteQuadData(&((NpcExplosion*)data)->Mesh);
         }
 
         jo_free(data);
@@ -118,6 +120,7 @@ static bool CheckNpcAgainstBullets(const Npc *npc)
 
         if (distance < colliderSize)
         {
+            FreeSpriteQuadData(&bullet->Mesh);
             jo_list_free_and_remove(bullets, tmp);
             return true;
         }
@@ -182,12 +185,13 @@ static void UpdateNpcWithBehaviour(Npc *npc)
 
     if (shoot && npc->LifeTime % 80 == 0)
     {
-        Bullet *bullet = jo_malloc(sizeof(Bullet));
+        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
         bullet->Pos.x = npc->Pos.x;
         bullet->Pos.y = npc->Pos.y;
         bullet->Type = 1;
         bullet->Velocity.x = BULLET_SPEED >> 1;
         bullet->Velocity.y = 0;
+        BulletInitializeMesh(bullet);
         BulletListAdd(bullet, false);
     }
 
@@ -206,9 +210,9 @@ void NpcInitialize()
     jo_list_init(&Explosions);
 
     ExplosionSound = load_16bit_pcm((Sint8 *)"EXP.PCM", 15360);
-    NpcMeshes[0] = ML_LoadMesh("BOMB.TMF", JO_ROOT_DIR, &(NpcMeshSizes[0]));
-    NpcMeshes[1] = ML_LoadMesh("ENEMY01.TMF", JO_ROOT_DIR, &(NpcMeshSizes[1]));
-    NpcMeshes[2] = ML_LoadMesh("ENEMY02.TMF", JO_ROOT_DIR, &(NpcMeshSizes[2]));
+    TmfLoadMesh(&NpcMeshes[0], "BOMB.TMF", JO_ROOT_DIR);
+    TmfLoadMesh(&NpcMeshes[1], "ENEMY01.TMF", JO_ROOT_DIR);
+    TmfLoadMesh(&NpcMeshes[2], "ENEMY02.TMF", JO_ROOT_DIR);
 
     for (int sprite = 0; sprite < NPC_EXP_FRM_CNT; sprite++)
     {
@@ -225,11 +229,12 @@ void NpcInitialize()
 
 void NpcSpawnExplosion(const jo_pos3D_fixed *pos)
 {
-    NpcExplosion *explosion = (NpcExplosion *)jo_malloc(sizeof(NpcExplosion));
+    NpcExplosion *explosion = (NpcExplosion *)jo_malloc_with_behaviour(sizeof(NpcExplosion), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
     explosion->Pos.x = pos->x;
     explosion->Pos.y = pos->y;
     explosion->Pos.z = pos->z;
     explosion->LifeTime = 0;
+    CreateSpriteQuad(&explosion->Mesh, ExplosionSpriteStartIndex);
 
     jo_list_add_ptr(&Explosions, explosion);
 
@@ -271,13 +276,13 @@ Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos)
 
 void NpcClearAll()
 {
-    ListClearInternal(&Npcs, false);
-    ListClearInternal(&Explosions, false);
+    ListClearInternal(&Npcs, false, false);
+    ListClearInternal(&Explosions, false, true);
 }
 
 int NpcDestroyAll()
 {
-    return ListClearInternal(&Npcs, true);
+    return ListClearInternal(&Npcs, true, false);
 }
 
 int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
@@ -317,6 +322,7 @@ void NpcUpdateExplosions()
 
         if (explosion->Frame >= NPC_EXP_FRM_CNT)
         {
+            FreeSpriteQuadData(&explosion->Mesh);
             jo_list_free_and_remove(&Explosions, tmp);
         }
         else
@@ -327,7 +333,7 @@ void NpcUpdateExplosions()
     }
 }
 
-int NpcUpdate(Player *player, void (*PlayerHitCallback)())
+int NpcUpdate(Player *player, int playerCount, void (*PlayerHitCallback)(Player * player))
 {
     int score = 0;
     jo_node *tmp;
@@ -352,16 +358,27 @@ int NpcUpdate(Player *player, void (*PlayerHitCallback)())
                 PickupCreate(&npc->Pos, chance < 35 ? (chance < 10 ? PickupTypeLife : PickupTypeBomb) : PickupTypeGun);
             }
         }
-        else if (CheckNpcAgainstPlayer(npc, player))
+        else
         {
-            PlayerHitCallback();
-            NpcSpawnExplosion(&npc->Pos);
-            jo_list_free_and_remove(&Npcs, tmp);
-        }
-        else if (npc->Pos.x > NPC_DESPAWN_X)
-        {
-            // Delete all NPCs that go out of screen
-            jo_list_free_and_remove(&Npcs, tmp);
+            bool hit = false;
+
+            for (int p = 0; p < playerCount; p++)
+            {
+                if (player[p].Lives >= 0 && CheckNpcAgainstPlayer(npc, &player[p]))
+                {
+                    hit = true;
+                    PlayerHitCallback(&player[p]);
+                    NpcSpawnExplosion(&npc->Pos);
+                    jo_list_free_and_remove(&Npcs, tmp);
+                    break;
+                }
+            }
+            
+            if (!hit && npc->Pos.x > NPC_DESPAWN_X)
+            {
+                // Delete all NPCs that go out of screen
+                jo_list_free_and_remove(&Npcs, tmp);
+            }
         }
     }
 
@@ -372,7 +389,6 @@ void NpcDraw()
 {
     jo_node *tmp;
     int modelNumber;
-    int i;
 
     for (tmp = Npcs.first; tmp != JO_NULL; tmp = tmp->next)
     {
@@ -382,11 +398,7 @@ void NpcDraw()
         jo_3d_push_matrix();
         {
             jo_3d_translate_matrix_fixed(npc->Pos.x, npc->Pos.y, npc->Pos.z);
-
-            for (i = 0; i < NpcMeshSizes[modelNumber]; i++)
-            {
-                jo_3d_mesh_draw(&(NpcMeshes[modelNumber][i]));
-            }
+            TmfDraw(&NpcMeshes[modelNumber]);
         }
         jo_3d_pop_matrix();
     }
@@ -398,7 +410,9 @@ void NpcDraw()
         jo_3d_push_matrix();
         {
             jo_3d_translate_matrix_fixed(explosion->Pos.x, explosion->Pos.y, explosion->Pos.z);
-            jo_3d_draw_sprite(ExplosionSpriteStartIndex + explosion->Frame);
+
+            jo_3d_set_texture(&explosion->Mesh, ExplosionSpriteStartIndex + explosion->Frame);
+            jo_3d_draw(&explosion->Mesh);
         }
         jo_3d_pop_matrix();
     }

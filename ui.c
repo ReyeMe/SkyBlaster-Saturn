@@ -106,6 +106,34 @@ void WidgetsInvokeInput()
     }
 }
 
+WidgetsWidget *WidgetsById(const int id)
+{
+    if (id < 0 || id >= widgets->count)
+    {
+        return JO_NULL;
+    }
+
+    return (WidgetsWidget *)jo_list_at(widgets, id)->data.ptr;
+}
+
+int WidgetsGetId(const WidgetsWidget * widget)
+{
+    jo_node *node;
+    int counter = 0;
+
+    for (node = widgets->first; node != NULL && widgets->count != 0; node = node->next)
+    {
+        if ((WidgetsWidget *)node->data.ptr == widget)
+        {
+            return counter;
+        }
+
+        counter++;
+    }
+
+    return -1;
+}
+
 jo_list *WidgetsGetAll()
 {
     return widgets;
@@ -181,7 +209,9 @@ bool WidgetsSetCurrent(WidgetsWidget *widget)
 
         for (node = widgets->first; node != JO_NULL && widgets->count != 0; node = node->next)
         {
-            if (((WidgetsWidget *)node->data.ptr) == widget && ((WidgetsWidget *)node->data.ptr)->IsSelectable)
+            if (((WidgetsWidget *)node->data.ptr) == widget && 
+                ((WidgetsWidget *)node->data.ptr)->IsSelectable &&
+                ((WidgetsWidget *)node->data.ptr)->IsVisible)
             {
                 currentWidget = node;
 

@@ -1,6 +1,36 @@
 #include <jo/jo.h>
 #include "tools.h"
 
+void CreateSpriteQuad(jo_3d_quad * quad, const int spriteId)
+{
+    int width = JO_DIV_BY_2(jo_sprite_get_width(spriteId));
+    int height = JO_DIV_BY_2(jo_sprite_get_height(spriteId));
+    jo_vertice * vertices = (jo_vertice *)jo_malloc_with_behaviour(4 * sizeof(jo_vertice), JO_MALLOC_TRY_REUSE_BLOCK);
+    jo_3d_create_plane(quad, vertices);
+    vertices[0].x = JO_MULT_BY_65536(-width);
+    vertices[1].x = JO_MULT_BY_65536(width);
+    vertices[2].x = JO_MULT_BY_65536(width);
+    vertices[3].x = JO_MULT_BY_65536(-width);
+    vertices[0].y = JO_MULT_BY_65536(-height);
+    vertices[1].y = JO_MULT_BY_65536(-height);
+    vertices[2].y = JO_MULT_BY_65536(height);
+    vertices[3].y = JO_MULT_BY_65536(height);
+    JO_ZERO(vertices[0].z);
+    JO_ZERO(vertices[1].z);
+    JO_ZERO(vertices[2].z);
+    JO_ZERO(vertices[3].z);
+    jo_3d_set_texture(quad, spriteId);
+    jo_3d_set_screen_doors(quad, false);
+    jo_3d_set_light(quad, false);
+}
+
+void FreeSpriteQuadData(jo_3d_quad * quad)
+{
+    jo_free(quad->data.attbl);
+    jo_free(quad->data.pltbl);
+    jo_free(quad->data.pntbl);
+}
+
 jo_fixed ToolsFastVectorLength(const jo_vector_fixed *vector)
 {
     // Alpha is 0.9398086351723256

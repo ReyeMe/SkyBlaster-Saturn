@@ -5,7 +5,8 @@
         "**/*.iso": true,
         "**/*.bin": true,
         "**/*.cue": true,
-        "**/*.elf": true
+        "**/*.elf": true,
+        "**/*.raw": true
     },
     "files.watcherExclude": {
         "**/*.o": true,
@@ -13,6 +14,7 @@
         "**/*.iso": true,
         "**/*.bin": true,
         "**/*.cue": true,
-        "**/*.elf": true
+        "**/*.elf": true,
+        "**/*.raw": true
     }
 }

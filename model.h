@@ -60,23 +60,39 @@ typedef struct
     unsigned char Reserved[5];
 } TmfHeader;
 
-/*
- * Load Jo-Engine mesh (textures are loaded from the same folder model is in)
+/** @brief Loaded mesh
+ */
+typedef struct
+{
+    jo_3d_mesh * Meshes;
+    int MeshCount;
+} SaturnMesh;
+
+/** @brief Load Jo-Engine mesh (textures are loaded from the same folder model is in)
+ * @param mesh Loaded mesh
  * @param file File name inside models folder
  * @param dir Model file folder
- * @param loaded number of loaded models
  * @return loaded array of meshes
  */
-jo_3d_mesh *ML_LoadMesh(const char *file, const char *dir, int *loaded);
+void TmfLoadMesh(SaturnMesh * mesh, const char *file, const char *dir);
 
-/*
- * Load Jo-Engine mesh
+/** @brief Load Jo-Engine mesh
+ * @param mesh Loaded mesh
  * @param file File name inside models folder
  * @param dir Model file folder
  * @param texture_loader texture loader
- * @param loaded number of loaded models
  * @return loaded array of meshes
  */
-jo_3d_mesh *ML_LoadMeshWithCustomTextureLoader(const char *file, const char *dir, int (*texture_loader)(TmfTexture *, const char *, int), int *loaded);
+void TmfLoadMeshWithCustomTextureLoader(SaturnMesh * mesh, const char *file, const char *dir, int (*texture_loader)(TmfTexture *, const char *, int));
+
+/** @brief Draw mesh
+ * @param mesh Mesh to draw
+ */
+void TmfDraw(const SaturnMesh * mesh);
+
+/** @brief Dispose of mesh
+ * @param mesh Mest to be disposed
+ */
+void TmfFree(const SaturnMesh * mesh);
 
 #endif

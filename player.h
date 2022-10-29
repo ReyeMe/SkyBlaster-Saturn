@@ -36,7 +36,6 @@
 #define PLAYER_BOMB_COST (10000)
 #define PLAYER_MAX_TILT (16)
 #define PLAYER_MAX_PITCH (12)
-#define PLAYER_MESH_COUNT (2)
 
 /** @brief Available player actions
  */
@@ -54,6 +53,14 @@ typedef enum
     /* Number of actions, MUST be always last in enum */
     PlayerActionCount
 } PlayerActions;
+
+typedef struct
+{
+    int BombEffectLifeTime;
+    int SpawnTick;
+    bool IsControllable;
+} PlayerStateData;
+
 
 /** @brief Player entity data
  */
@@ -83,11 +90,11 @@ typedef struct
     /* Cooldown for player actions (shoot, bomb, etc..) */
     int ActionCooldown[PlayerActionCount - 1];
 
-    /* Current score player achieved */
-    Score Score;
-
     /* Protect player against getting hurt */
     bool HurtProtect;
+
+    /* Player state data */
+    PlayerStateData StateData;
 } Player;
 
 /** @brief Initialize player entity data
@@ -99,13 +106,13 @@ void PlayerInititalize(Player *player);
  *  @param player Player entity data
  *  @param mesh Player mesh
  */
-void PlayerDraw(Player *player, jo_3d_mesh *mesh);
+void PlayerDraw(Player *player, SaturnMesh *mesh);
 
 /** @brief Process controller input for player and player logic
  *  @param player player entity data
- *  @param inputDeviceId ID of a controller to use
+ *  @param input ID of a controller to use
  *  @return Player action
  */
-PlayerActions PlayerUpdate(Player *player, int inputDeviceId);
+PlayerActions PlayerUpdate(Player *player, int input);
 
 #endif

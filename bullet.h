@@ -35,7 +35,15 @@ typedef struct
 
     /* Type of the bullet */
     BulletTypes Type;
+
+    /* Mesh of the bullet */
+    jo_3d_quad Mesh;
 } Bullet;
+
+/** @brief Initialize bullet mesh
+ * @param bullet Bullet data
+ */
+void BulletInitializeMesh(Bullet * bullet);
 
 /** @brief Load textures or models
  */

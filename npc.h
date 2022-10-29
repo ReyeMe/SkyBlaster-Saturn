@@ -46,6 +46,9 @@ typedef struct
 
     /* Current animation frame */
     int Frame;
+
+    /* Explosion quad */
+    jo_3d_quad Mesh;
 } NpcExplosion;
 
 /** @brief Initialize NPC data
@@ -85,11 +88,12 @@ int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range);
 void NpcUpdateExplosions();
 
 /** @brief Update all available NPCs (will do tests against bullets and level bounds)
- *  @param player Current player data
+ *  @param player Player data
+ *  @param playerCount Number of all players
  *  @param PlayerHitCallback What to do if player was hit
  *  @return How much score player gained
  */
-int NpcUpdate(Player *player, void (*PlayerHitCallback)());
+int NpcUpdate(Player *player, int playerCount, void (*PlayerHitCallback)(Player * player));
 
 /** @brief Draw all available NPCs (including explosion effects)
  */

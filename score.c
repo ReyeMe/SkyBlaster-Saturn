@@ -65,7 +65,7 @@ int ScoreAddValue(Score * score, const int value)
     return score->Value;
 }
 
-void ScoreDraw(Score * score)
+void ScoreDraw(Score * score, int loc)
 {
     // Prepare text
     char text[SCORE_TEXT_LEN + 1];
@@ -74,7 +74,7 @@ void ScoreDraw(Score * score)
     // Draw text
     jo_3d_push_matrix();
     {
-        jo_3d_translate_matrix(40, 60, -70);
+        jo_3d_translate_matrix(40, loc, -70);
         FontPrint(text, ScoreUpdateEffect, score);
     }
     jo_3d_pop_matrix();

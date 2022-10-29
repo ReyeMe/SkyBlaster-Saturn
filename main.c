@@ -1,22 +1,8 @@
-#include <jo/jo.h>
-#include "analogPad.h"
-#include "pcmsys.h"
-#include "pcmstm.h"
-#include "pcmcdda.h"
-#include "model.h"
-#include "font3D.h"
-#include "score.h"
-#include "player.h"
-#include "background.h"
-#include "bullet.h"
-#include "bulletList.h"
-#include "ui.h"
-#include "uiControls.h"
-#include "tools.h"
-#include "npc.h"
-#include "pickup.h"
+#include "main.h"
 
+void MenuCreateGame(bool backButton);
 void MenuCreateMain(bool backButton);
+void GameCreateGameOver();
 
 /* Music stuff */
 #define LWRAM (2097152)
@@ -29,62 +15,132 @@ int snd_adx = 0;
 /* Main 3D camera */
 static jo_camera camera;
 
-/* Player 3D mesh */
-static jo_3d_mesh *PlayerMesh;
-
-/* Explosion 3D mesh */
-static jo_3d_mesh *ExplosionMesh;
-
-/* Player entity data */
-static Player PlayerEntity;
-
-/* Indicates whether player is in game */
-static bool IsInGame = false;
-
-/* Indicates whether player is in game over screen */
-static bool IsInGameOver = false;
-
-/* Indicates whether game is paused */
-static bool IsPaused = false;
-
-/* Indicates whether player can control the game */
-static bool IsControllable = false;
-
 /* Indicates whether game assets have loaded */
 static bool GameLoaded = false;
 
-/* Number of level player is currently at */
-static int CurrentLevel = 0;
-
-/* Current tick level title is at */
-static int CurrentLevelTitleTick = 0;
-
 /* Logo mesh collection */
-static jo_3d_mesh *Logo;
+static SaturnMesh Logo;
 
 /* Logo mesh size */
 static int LogoSize;
 
-/* Player shooting sound */
-static short PlayerShootSound;
-
-/* Index of life sprite */
-static int LifeSpriteIndex;
-
-/* Index of bomb sprite */
-static int BombSpriteIndex;
-
-/* Index of life icon sprite */
-static int LifeIconSpriteIndex;
-
 /* Game over score label text */
 static char GameOverScoreLabel[SCORE_TEXT_LEN + 1];
 
-/* Bomb effect */
-static int BombEffectLifeTime;
+/* Game end score */
+static int CurrentGameEndScore = 0;
 
-static int debug = 0;
-static int debug2 = 40;
+/* Do game draw */
+static bool DoGameDraw = false;
+
+/* Is coop mode */
+static bool IsCoop = false;
+
+/* Is endless mode */
+static bool IsEndless = false;
+
+/** @brief Resume game button action
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void MenuResumePauseGame(bool backButton)
+{
+    if (!backButton)
+    {
+        for (jo_node *node = WidgetsGetAll()->first; node != JO_NULL; node = node->next)
+        {
+            ((WidgetsWidget*)(node->data.ptr))->IsVisible = !((WidgetsWidget*)(node->data.ptr))->IsVisible;
+        }
+
+        if (!WidgetsById(0)->IsVisible)
+        {
+            // Game was not paused
+            WidgetsSetCurrent(WidgetsById(2));
+            CDDASetVolume(4, 4);
+        }
+        else
+        {
+            // Game was paused
+            WidgetsSetCurrent(WidgetsById(0));
+            CDDASetVolume(7, 7);
+        }
+    }
+}
+
+/** @brief Check if any controller got start button pressed
+ * @return Was any start button pressed
+ */
+bool AnyStartButtonPressed()
+{
+    for(int input = 0; input < JO_INPUT_MAX_DEVICE; input++)
+    {
+        if (jo_is_input_available(input) && jo_is_input_key_down(input, JO_KEY_START))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/** @brief Game logic handler
+ * @param widget Game screen widget
+ * @param message Game logic message
+ */
+void GameHandler(WidgetsWidget *widget, WidgetMessages message)
+{
+    switch (message)
+    {
+        case WIDGET_INIT:
+            GameInitializeMortal(IsCoop, IsEndless);
+            break;
+
+        case WIDGET_FREE:
+            GameDisposeMortal();
+            break;
+
+        case WIDGET_INPUT:
+        
+            // Create pause menu
+            if (AnyStartButtonPressed())
+            {
+                MenuResumePauseGame(false);
+                return;
+            }
+
+            CurrentState state;
+            GameUpdateTick(&state);
+            CurrentGameEndScore = state.Score;
+
+            if (state.GameEnd)
+            {
+                GameCreateGameOver();
+            }
+
+            break;
+
+        case WIDGET_DRAW:
+            GameScoreDraw();
+            DoGameDraw = true;
+            break;
+
+        default:
+            break;
+    }
+}
+
+/** @brief Exit game and go to main menu
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void GameExit(bool backButton)
+{
+    if (!backButton)
+    {
+        WidgetsClearAll();
+        MenuCreateMain(backButton);
+        CDDASetVolume(7, 7);
+        CDDAPlaySingle(MENU_MUSIC, true);
+    }
+}
 
 /** @brief Called when new game starts
  *  @param backButton Indicates whether back button (B) was pressed
@@ -93,27 +149,18 @@ void GameCreateNew(bool backButton)
 {
     if (!backButton)
     {
-        // Reset player data and position
-        PlayerInititalize(&PlayerEntity);
-        PlayerEntity.Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
-
-        // Clear all bullets, NPCs and entities
-        BulletListClear(false);
-        NpcClearAll();
-        PickupClearAll();
-
-        IsInGame = true;
-        IsPaused = false;
-        IsInGameOver = false;
-        IsControllable = false;
-        CurrentLevel = 0;
-        CurrentLevelTitleTick = 1;
-        PlayerEntity.GunLevel = 0;
-        BombEffectLifeTime = -1;
-
         WidgetsClearAll();
+        WidgetsSetCurrent(WidgetsCreate(0, 0, GameHandler));
+
+        WidgetsCreateLabel(0, 15, "Game paused")->IsVisible = false;
+        WidgetsCreateButton(0, -10, "Resume game", MenuResumePauseGame)->IsVisible = false;
+        WidgetsCreateButton(0, -18, "Exit", GameExit)->IsVisible = false;
 
         CDDAPlaySingle(GAME_MUSIC, true);
+    }
+    else
+    {
+        MenuCreateGame(false);
     }
 }
 
@@ -124,8 +171,6 @@ void MenuCredits(bool backButton)
 {
     if (!backButton)
     {
-        IsInGame = false;
-        IsPaused = false;
         WidgetsClearAll();
         WidgetsCreateLabel(0, 18, "Coding and Art");
         WidgetsCreateLabel(0, 10, "ReyeMe");
@@ -152,11 +197,7 @@ void DrawLogo(WidgetsWidget *widget, WidgetMessages message)
         {
             jo_3d_translate_matrix(widget->y, widget->x, -60);
             jo_3d_rotate_matrix_x(rotation++);
-
-            for (int logoMesh = 0; logoMesh < LogoSize; logoMesh++)
-            {
-                jo_3d_mesh_draw(&(Logo[logoMesh]));
-            }
+            TmfDraw(&Logo);
         }
         jo_3d_pop_matrix();
 
@@ -167,6 +208,63 @@ void DrawLogo(WidgetsWidget *widget, WidgetMessages message)
     }
 }
 
+/** @brief Create coop game
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void MenuCreateCoop(bool backButton)
+{
+    IsCoop = true;
+    GameCreateNew(backButton);
+}
+
+/** @brief Create game menu
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void MenuCreatePlayerMode(bool backButton)
+{
+    if (!backButton)
+    {
+        IsCoop = false;
+
+        WidgetsClearAll();
+        WidgetsCreate(0, 17, DrawLogo)->IsSelectable = false;
+        WidgetsCreateLabel(0, -5, IsEndless ? "Endless play" : "Story mode");
+        WidgetsSetCurrent(WidgetsCreateButton(0, -22, "Single", GameCreateNew));
+        WidgetsCreateButton(0, -30, "Cooperative", MenuCreateCoop);
+    }
+    else
+    {
+        MenuCreateMain(false);
+    }
+}
+
+/** @brief Create coop game
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void MenuCreateEndless(bool backButton)
+{
+    IsEndless = true;
+    MenuCreatePlayerMode(backButton);
+}
+
+/** @brief Create game menu
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void MenuCreateGame(bool backButton)
+{
+    if (!backButton)
+    {
+        IsEndless = false;
+
+        WidgetsClearAll();
+        WidgetsCreate(0, 17, DrawLogo)->IsSelectable = false;
+        WidgetsCreateLabel(0, -5, "New game");
+        
+        WidgetsCreateButton(0, -22, "Story", MenuCreatePlayerMode)->IsSelectable = false;
+        WidgetsSetCurrent(WidgetsCreateButton(0, -30, "Endless", MenuCreateEndless));
+    }
+}
+
 /** @brief Create main menu
  *  @param backButton Indicates whether back button (B) was pressed
  */
@@ -174,90 +272,11 @@ void MenuCreateMain(bool backButton)
 {
     if (!backButton)
     {
-        IsInGame = false;
-        IsInGameOver = false;
-        IsPaused = false;
-
         WidgetsClearAll();
         WidgetsCreate(0, 17, DrawLogo)->IsSelectable = false;
         WidgetsCreateLabel(0, -5, "Sky Blaster");
-        WidgetsSetCurrent(WidgetsCreateButton(0, -22, "New game", GameCreateNew));
+        WidgetsSetCurrent(WidgetsCreateButton(0, -22, "New game", MenuCreateGame));
         WidgetsCreateButton(0, -30, "Credits", MenuCredits);
-    }
-}
-
-/** @brief Resume game button action
- *  @param backButton Indicates whether back button (B) was pressed
- */
-void MenuResumeGame(bool backButton)
-{
-    if (!backButton)
-    {
-        IsPaused = false;
-        WidgetsClearAll();
-        CDDASetVolume(7, 7);
-    }
-}
-
-/** @brief Create player bullets
- */
-void PlayerShoot()
-{
-    pcm_play(PlayerShootSound, PCM_PROTECTED, 6);
-
-    if (PlayerEntity.GunLevel == 0)
-    {
-        Bullet *bullet = jo_malloc(sizeof(Bullet));
-        bullet->Pos.x = PlayerEntity.Pos.x;
-        bullet->Pos.y = PlayerEntity.Pos.y;
-        bullet->Type = 0;
-        bullet->Velocity.x = -BULLET_SPEED;
-        bullet->Velocity.y = 0;
-        BulletListAdd(bullet, true);
-    }
-    else if (PlayerEntity.GunLevel > 0)
-    {
-        jo_fixed offset = -JO_FIXED_8;
-
-        for (int i = 0; i < 2; i++)
-        {
-            Bullet *bullet = jo_malloc(sizeof(Bullet));
-            bullet->Pos.x = PlayerEntity.Pos.x;
-            bullet->Pos.y = PlayerEntity.Pos.y + offset;
-            bullet->Type = 0;
-            bullet->Velocity.x = -BULLET_SPEED;
-            bullet->Velocity.y = 0;
-            BulletListAdd(bullet, true);
-
-            offset += JO_FIXED_16;
-        }
-
-        if (PlayerEntity.GunLevel > 1)
-        {
-            for (int i = -1; i < 2; i += 2)
-            {
-                Bullet *bullet = jo_malloc(sizeof(Bullet));
-                bullet->Pos.x = PlayerEntity.Pos.x;
-                bullet->Pos.y = PlayerEntity.Pos.y;
-                bullet->Type = 0;
-                bullet->Velocity.x = -(BULLET_SPEED / 2);
-                bullet->Velocity.y = (BULLET_SPEED / 2) * i;
-                BulletListAdd(bullet, true);
-            }
-        }
-    }
-}
-
-/** @brief Exit game and go to main menu
- *  @param backButton Indicates whether back button (B) was pressed
- */
-void GameExit(bool backButton)
-{
-    if (!backButton)
-    {
-        MenuCreateMain(backButton);
-        CDDASetVolume(7, 7);
-        CDDAPlaySingle(MENU_MUSIC, true);
     }
 }
 
@@ -266,14 +285,11 @@ void GameExit(bool backButton)
  */
 void GameCreateGameOver()
 {
-    IsInGame = false;
-    IsInGameOver = true;
-    IsPaused = false;
     WidgetsClearAll();
 
     WidgetsCreateLabel(0, 15, "Game over");
 
-    sprintf(GameOverScoreLabel, "%d", PlayerEntity.Score.Value);
+    sprintf(GameOverScoreLabel, "%d", CurrentGameEndScore);
     WidgetsCreateLabel(0, 7, GameOverScoreLabel);
 
     WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Try again", GameCreateNew));
@@ -282,177 +298,12 @@ void GameCreateGameOver()
     CDDAPlaySingle(GAME_END_MUSIC, false);
 }
 
-/** @brief Player got hit by a bullet or NPC
- */
-void PlayerHit()
-{
-    if (!PlayerEntity.HurtProtect)
-    {
-        PlayerEntity.Lives--;
-        NpcSpawnExplosion(&PlayerEntity.Pos);
-
-        if (PlayerEntity.Lives < 0)
-        {
-            GameCreateGameOver();
-        }
-        else
-        {
-            int bombsToDisperse = PlayerEntity.Bombs / 2;
-            PlayerEntity.Bombs -= bombsToDisperse;
-
-            // Drop half the bombs player has collected
-            for (int bomb = 0; bomb < bombsToDisperse; bomb++)
-            {
-                int adder = bomb % 2 == 0 ? JO_FIXED_PI_DIV_2 : 0;
-                int angle = (jo_random(6)<<14);
-
-                jo_vector_fixed velocity = {
-                    -jo_fixed_sin(adder + angle) << 2,
-                    -jo_fixed_cos(adder + angle) << 2,
-                    0
-                };
-
-                PickupCreateWithVelocity(&PlayerEntity.Pos, &velocity, PickupTypeBomb);
-            }
-
-            // Drop players gun
-            if (PlayerEntity.GunLevel > 0)
-            {
-                int angle = (jo_random(12)<<14);
-
-                jo_vector_fixed velocity = {
-                    -jo_fixed_sin(angle) << 2,
-                    -jo_fixed_cos(angle) << 2,
-                    0
-                };
-
-                PickupCreateWithVelocity(&PlayerEntity.Pos, &velocity, PickupTypeGun);
-                PlayerEntity.GunLevel--;
-            }
-
-            IsControllable = false;
-            CurrentLevelTitleTick = 1;
-            PlayerEntity.HurtProtect = true;
-            PlayerEntity.Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
-        }
-    }
-}
-
-/** @brief Make that bullets will kill player
- *  @param bullet Bullet to check
- *  @param isPlayer Was bullet shot by player
- */
-void ReadBulletPositions(Bullet *bullet, bool isPlayer)
-{
-    if (!isPlayer && !PlayerEntity.HurtProtect)
-    {
-        jo_vector_fixed fromPlayer = {{bullet->Pos.x - PlayerEntity.Pos.x, bullet->Pos.y - PlayerEntity.Pos.y, 0}};
-        jo_fixed distance = ToolsFastVectorLength(&fromPlayer);
-
-        if (distance < JO_FIXED_4)
-        {
-            PlayerHit();
-        }
-    }
-}
-
 /** @brief Main gaim loop
  */
-void GameLogic()
+void MainLogic()
 {
     // Update player and background
     BackgroundUdpate();
-
-    if (!IsPaused && IsInGame)
-    {
-        // Create pause menu
-        if (jo_is_pad1_key_down(JO_KEY_START))
-        {
-            IsPaused = true;
-            WidgetsCreateLabel(0, 15, "Game paused");
-            WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Resume game", MenuResumeGame));
-            WidgetsCreateButton(0, -18, "Exit", GameExit);
-            CDDASetVolume(4, 4);
-            return;
-        }
-
-        if (!IsControllable)
-        {
-            PlayerEntity.Pos.x -= JO_FIXED_1;
-            IsControllable = PlayerEntity.Pos.x <= PLAYER_SPAWN_X;
-        }
-        else
-        {
-            // Protect player at start of game
-            PlayerEntity.HurtProtect = CurrentLevelTitleTick < 350;
-            
-            PlayerActions action = PlayerUpdate(&PlayerEntity, 0);
-    
-            // Do player actions
-            if (action == PlayerActionShoot)
-            {
-                // Shoot
-                PlayerShoot();
-            }
-    
-            if (action == PlayerActionBomb)
-            {
-                // start effect
-                BombEffectLifeTime = 0;
-            }
-        }
-
-        // Debug random enemy generator
-        debug++;
-        if (debug2 < debug && CurrentLevelTitleTick >= 350)
-        {
-            int spawnCount = jo_random(3);
-
-            for (int i = 0; i < spawnCount; i++)
-            {
-                jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
-                NpcCreate(jo_random(4) - 1, &pos);
-
-                debug2 = 40 + jo_random(50);
-                debug = 0;
-            }
-        }
-
-        // Update NPCs
-        int collectedScore = NpcUpdate(&PlayerEntity, PlayerHit);
-
-        if (collectedScore > 0)
-        {
-            ScoreAddValue(&PlayerEntity.Score, collectedScore);
-        }
-
-        // Update player bullets
-        BulletListUpdate(ReadBulletPositions);
-
-        // Update pickups
-        PickupUpdate(&PlayerEntity);
-
-        // Update bomb effect
-        if (BombEffectLifeTime > -1)
-        {
-            BombEffectLifeTime++;
-
-            // Clear all enemy bullets
-            int range = (BombEffectLifeTime << 16) * 8;
-            BulletListClearEnemyBulletsInRange(&PlayerEntity.Pos, range);
-
-            // Destroy all NPCs in range and add score
-            ScoreAddValue(&PlayerEntity.Score, NpcDestroyAllInRange(&PlayerEntity.Pos, range));
-
-            if (BombEffectLifeTime > PLAYER_ACTION_BOMB)
-            {
-                BombEffectLifeTime = -1;
-            }
-        }
-
-        NpcUpdateExplosions();
-    }
-
     WidgetsInvokeInput();
 }
 
@@ -489,30 +340,9 @@ void StartGameFadeIn()
 
 /** @brief Redering loop
  */
-void GameDraw()
+void MainDraw()
 {
     StartGameFadeIn();
-
-    // Draw 2D in-game UI
-    if (IsInGame && !IsPaused)
-    {
-        for (int live = 0; live <= PlayerEntity.Lives + 1; live++)
-        {
-            if (live == PlayerEntity.Lives + 1)
-            {
-                jo_sprite_draw3D(LifeIconSpriteIndex, 140 - (live * 14), -100, 100);
-            }
-            else
-            {
-                jo_sprite_draw3D(LifeSpriteIndex, 140 - (live * 14), -100, 100);
-            }
-        }
-
-        for (int bomb = 1; bomb <= PlayerEntity.Bombs; bomb++)
-        {
-            jo_sprite_draw3D(BombSpriteIndex, 140 - (bomb * 6), -90, 100);
-        }
-    }
 
     jo_3d_push_matrix();
     {
@@ -520,38 +350,6 @@ void GameDraw()
 
         // Redraw active widgets
         WidgetsRedraw();
-
-        if (IsInGame && !IsPaused)
-        {
-            // Draw HUD
-            ScoreDraw(&PlayerEntity.Score);
-
-            if (CurrentLevelTitleTick > 0 && CurrentLevelTitleTick < 350)
-            {
-                if (CurrentLevelTitleTick > 150 && CurrentLevelTitleTick < 210)
-                {
-                    CurrentLevelTitleTick++;
-                }
-                else
-                {
-                    CurrentLevelTitleTick += 2;
-                }
-
-                /* TODO: Implement levels before un-commenting this
-
-                // Prepare text
-                char text[12];
-                sprintf(text, "LEVEL %d", CurrentLevel);
-
-                jo_3d_translate_matrix_fixed(
-                    0,
-                    -jo_fixed_mult(jo_sin(CurrentLevelTitleTick >> 1), jo_int2fixed(80)) + jo_int2fixed(80),
-                    jo_int2fixed(-60));
-
-                FontPrintCentered(text, JO_NULL, JO_NULL);
-                */
-            }
-        }
     }
     jo_3d_pop_matrix();
 
@@ -561,36 +359,10 @@ void GameDraw()
     // Draw world background
     BackgroundDraw();
 
-    // Entities in world
-    if (IsInGame && !IsPaused)
+    if (DoGameDraw)
     {
-        jo_3d_push_matrix();
-        {
-            jo_3d_rotate_matrix(BG_PLACEMENT_X_ANG, BG_PLACEMENT_Y_ANG, BG_PLACEMENT_Z_ANG);
-            jo_3d_translate_matrix(0, 0, BG_PLACEMENT_DEPTH);
-
-            // Draw player
-            PlayerDraw(&PlayerEntity, PlayerMesh);
-
-            // Draw bomb effect
-            if (BombEffectLifeTime > -1)
-            {
-                jo_3d_push_matrix();
-                {
-                    int scale = BombEffectLifeTime << 16;
-                    jo_3d_translate_matrix_fixed(PlayerEntity.Pos.x, PlayerEntity.Pos.y, 0);
-                    jo_3d_set_scale_fixed(JO_FIXED_1 + scale, JO_FIXED_1 + scale, JO_FIXED_1);
-                    jo_3d_mesh_draw(ExplosionMesh);
-                }
-                jo_3d_pop_matrix();
-            }
-
-            // Update NPCs and entities
-            NpcDraw();
-            BulletListDraw();
-            PickupDraw();
-        }
-        jo_3d_pop_matrix();
+        GameDraw();
+        DoGameDraw = false;
     }
 }
 
@@ -609,11 +381,7 @@ void LoadingScreen()
         jo_3d_translate_matrix(0, 0, -60);
         jo_3d_set_scale_fixed(scale, scale, scale);
         jo_3d_rotate_matrix_x(rotation);
-
-        for (int logoMesh = 0; logoMesh < LogoSize; logoMesh++)
-        {
-            jo_3d_mesh_draw(&(Logo[logoMesh]));
-        }
+        TmfDraw(&Logo);
     }
     jo_3d_pop_matrix();
 
@@ -639,7 +407,7 @@ void GameInitialize()
     jo_sprite_add_tga(JO_ROOT_DIR, "PONE.TGA", JO_COLOR_Transparent);
 
     // Load logo model
-    Logo = ML_LoadMesh("LOGO.TMF", JO_ROOT_DIR, &LogoSize);
+    TmfLoadMesh(&Logo, "LOGO.TMF", JO_ROOT_DIR);
     LoadingScreen();
 
     // Fade in loading screen
@@ -662,18 +430,8 @@ void GameInitialize()
     PickupInitialize();
     BulletListInitialize();
 
-    // Load UI sprites
-    LifeSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "LIFECNT.TGA", JO_COLOR_RGB(255, 0, 255));
-    LifeIconSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "LIFEICO.TGA", JO_COLOR_RGB(255, 0, 255));
-    BombSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "BMBICO.TGA", JO_COLOR_RGB(255, 0, 255));
-
-    // Game sounds
-    PlayerShootSound = load_16bit_pcm((Sint8 *)"PEW.PCM", 15360);
-
-    // Load player and explosion model
-    int temp = 0;
-    PlayerMesh = ML_LoadMesh("PLAYER.TMF", JO_ROOT_DIR, &temp);
-    ExplosionMesh = ML_LoadMesh("EXP.TMF", JO_ROOT_DIR, &temp);
+    // Load and initialize game
+    GameInitializeImmortal();
 
     // All base assets are loaded now
     GameLoaded = true;
@@ -692,8 +450,8 @@ void Logic()
 {
     static bool startup = true;
     slUnitMatrix(0);
-    GameLogic();
-    GameDraw();
+    MainLogic();
+    MainDraw();
 
     if (jo_is_pad1_key_pressed(JO_KEY_A) &&
         jo_is_pad1_key_pressed(JO_KEY_B) &&
