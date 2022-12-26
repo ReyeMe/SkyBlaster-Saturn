@@ -9,6 +9,12 @@
 /* Player shooting sound */
 static short PlayerShootSound;
 
+/* Bomb explosion sound */
+static short PlayerBombSound;
+
+/* Player dies */
+static short PlayerDeadSound;
+
 /* Index of life sprite */
 static int LifeSpriteIndex;
 
@@ -20,6 +26,9 @@ static int BombSpriteIndex;
 
 /* Index of life icon sprite */
 static int LifeIconSpriteIndex;
+
+/* Progress bar */
+static int ProgressBar;
 
 /* Player 3D mesh */
 static SaturnMesh PlayerMesh;
@@ -51,59 +60,72 @@ static int CurrentLevelTick;
 /* Are we playing endless mode */
 static bool IsEndless;
 
+/* Current music track */
+static int CurrentMusic = 0;
+
+/* Game music volume */
+static int CurrentMusicVolume = 90;
+
+/* Number of points needed to revive player */
+#define REQUIRED_REVIVE_POINTS (2500)
+
+/* Score count state after players death*/
+static int BeforeReviveScoreCount = 0;
+
 /** @brief Player got hit by a bullet or NPC
  */
-void PlayerHit(Player * player)
+static void PlayerHit(Player * player)
 {
-    if (!player->HurtProtect)
+    if (!player->HurtProtect && player->Lives >= 0)
     {
         player->Lives--;
         NpcSpawnExplosion(&player->Pos);
 
-        if (player->Lives >= 0)
+        int bombsToDisperse = player->Bombs / 2;
+        player->Bombs -= bombsToDisperse;
+
+        // Drop half the bombs player has collected
+        for (int bomb = 0; bomb < bombsToDisperse; bomb++)
         {
-            int bombsToDisperse = player->Bombs / 2;
-            player->Bombs -= bombsToDisperse;
+            int adder = bomb % 2 == 0 ? JO_FIXED_PI_DIV_2 : 0;
+            int angle = (jo_random(6)<<14);
 
-            // Drop half the bombs player has collected
-            for (int bomb = 0; bomb < bombsToDisperse; bomb++)
-            {
-                int adder = bomb % 2 == 0 ? JO_FIXED_PI_DIV_2 : 0;
-                int angle = (jo_random(6)<<14);
+            jo_vector_fixed velocity = {
+                {
+                    -jo_fixed_sin(adder + angle) << 2,
+                    -jo_fixed_cos(adder + angle) << 2,
+                    0
+                }
+            };
 
-                jo_vector_fixed velocity = {
-                    {
-                        -jo_fixed_sin(adder + angle) << 2,
-                        -jo_fixed_cos(adder + angle) << 2,
-                        0
-                    }
-                };
-
-                PickupCreateWithVelocity(&player->Pos, &velocity, PickupTypeBomb);
-            }
-
-            // Drop players gun
-            if (player->GunLevel > 0)
-            {
-                int angle = (jo_random(12)<<14);
-
-                jo_vector_fixed velocity = {
-                    {
-                        -jo_fixed_sin(angle) << 2,
-                        -jo_fixed_cos(angle) << 2,
-                        0
-                    }
-                };
-
-                PickupCreateWithVelocity(&player->Pos, &velocity, PickupTypeGun);
-                player->GunLevel--;
-            }
-
-            player->StateData.IsControllable = false;
-            player->StateData.SpawnTick = 1;
-            player->HurtProtect = true;
-            player->Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
+            PickupCreateWithVelocity(&player->Pos, &velocity, PickupTypeBomb);
         }
+
+        // Drop players gun
+        if (player->GunLevel > 0)
+        {
+            int angle = (jo_random(12)<<14);
+
+            jo_vector_fixed velocity = {
+                {
+                    -jo_fixed_sin(angle) << 2,
+                    -jo_fixed_cos(angle) << 2,
+                    0
+                }
+            };
+
+            PickupCreateWithVelocity(&player->Pos, &velocity, PickupTypeGun);
+            player->GunLevel--;
+        }
+
+        player->StateData.IsControllable = false;
+        player->StateData.SpawnTick = 1;
+        player->HurtProtect = true;
+        player->Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
+        
+        BeforeReviveScoreCount = SessionScore.Value;
+
+        pcm_play(PlayerDeadSound, PCM_PROTECTED, 6);
     }
 }
 
@@ -111,7 +133,7 @@ void PlayerHit(Player * player)
  *  @param bullet Bullet to check
  *  @param isPlayer Was bullet shot by player
  */
-void ReadBulletPositions(Bullet *bullet, bool isPlayer)
+static void ReadBulletPositions(Bullet *bullet, bool isPlayer)
 {
     if (!isPlayer)
     {
@@ -134,7 +156,7 @@ void ReadBulletPositions(Bullet *bullet, bool isPlayer)
 
 /** @brief Create player bullets
  */
-void PlayerShoot(Player * player)
+static void PlayerShoot(Player * player)
 {
     pcm_play(PlayerShootSound, PCM_PROTECTED, 6);
 
@@ -184,9 +206,22 @@ void PlayerShoot(Player * player)
     }
 }
 
+static void DrawReviveHud(int height)
+{
+    int reviveCount = SessionScore.Value - BeforeReviveScoreCount;
+    int percent = JO_DIV_BY_65536(jo_fixed_mult(jo_fixed_div(JO_MULT_BY_65536(reviveCount), JO_MULT_BY_65536(REQUIRED_REVIVE_POINTS)), JO_MULT_BY_65536(100)));
+    
+    jo_sprite_draw3D(ProgressBar + 1, 64, height, 100);
+
+    jo_sprite_enable_clipping(false);
+    jo_sprite_set_clipping_area(JO_TV_WIDTH_2 + 124 - percent, 0, JO_TV_WIDTH, JO_TV_HEIGHT, 100);
+    jo_sprite_draw3D(ProgressBar, 64, height, 100);
+    jo_sprite_disable_clipping();
+}
+
 /** @brief Draw first players hud
  */
-void DrawPlayer1Hud(const Player * player)
+static void DrawPlayer1Hud(const Player * player)
 {
     if (player->Lives >= 0)
     {
@@ -209,13 +244,14 @@ void DrawPlayer1Hud(const Player * player)
     }
     else
     {
+        DrawReviveHud(-100);
         jo_sprite_draw3D(DeathSpriteIndex, 140, -100, 100);
     }
 }
 
 /** @brief Draw second players hud
  */
-void DrawPlayer2Hud(const Player * player)
+static void DrawPlayer2Hud(const Player * player)
 {
     if (player->Lives >= 0)
     {
@@ -238,29 +274,66 @@ void DrawPlayer2Hud(const Player * player)
     }
     else
     {
+        DrawReviveHud(100);
         jo_sprite_draw3D(DeathSpriteIndex, 140, 100, 100);
+    }
+}
+
+/** @brief Set music to play
+ * @param musicToSet Music ID, starts from 0
+ */
+static void SetCurrentMusic(int musicToSet)
+{
+    int limitedMusicIndex = MAX(MIN(musicToSet, LVL_MUSIC_CNT - 1), 0);
+
+    if (CurrentMusic != limitedMusicIndex && CurrentMusicVolume > 0)
+    {
+        CurrentMusicVolume--;
+    }
+    else if (CurrentMusic == limitedMusicIndex && CurrentMusicVolume <= 90)
+    {
+        CurrentMusicVolume++;
+    }
+
+    if (CurrentMusicVolume <= 90)
+    {
+        int transformed = JO_DIV_BY_65536(jo_fixed_mult(jo_sin(CurrentMusicVolume), JO_MULT_BY_65536(7)));
+        transformed = JO_ABS(transformed) + 1;
+        CDDASetVolume(transformed, transformed);
+    }
+
+    if (CurrentMusicVolume == 0)
+    {
+        CurrentMusic = limitedMusicIndex;
+        int set = LVL1_MUSIC + MAX(MIN(CurrentMusic, LVL_MUSIC_CNT - 1), 0);
+        CDDAPlaySingle(set, true);
     }
 }
 
 /** @brief Endless mode
  */
-void EndlessModeLoop()
+static void EndlessModeLoop()
 {
     static int spawnTimer = 0;
     static int nextSpawn = 40;
+
+    int stage = SessionScore.Value / 4000;
+    int stageColor = JO_MIN(stage, (int)BackgroundCrimsonSky);
+    BackgroundSetColorShift(stageColor);
+    SetCurrentMusic(stageColor);
 
     spawnTimer++;
 
     if (nextSpawn < spawnTimer && CurrentLevelTick >= 350)
     {
-        int spawnCount = jo_random(3);
+        int spawnCount = jo_random(3 + MIN(stageColor, 3));
 
         for (int i = 0; i < spawnCount; i++)
         {
             jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
             NpcCreate(jo_random(4) - 1, &pos);
 
-            nextSpawn = 40 + jo_random(50);
+            nextSpawn = 40 + jo_random(50 - stageColor);
             spawnTimer = 0;
         }
     }
@@ -268,7 +341,7 @@ void EndlessModeLoop()
 
 /** @brief Story mode
  */
-void StoryModeLoop()
+static void StoryModeLoop()
 {
     
 }
@@ -281,12 +354,16 @@ void GameInitializeImmortal()
 {
     // Game sounds, immortal since we cannot unload them atm
     PlayerShootSound = load_16bit_pcm((Sint8 *)"PEW.PCM", 15360);
+    PlayerBombSound = load_16bit_pcm((Sint8 *)"BOMB.PCM", 15360);
+    PlayerDeadSound = load_16bit_pcm((Sint8 *)"DEAD.PCM", 15360);
     
     // Load UI sprites
     LifeSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "LIFECNT.TGA", JO_COLOR_RGB(255, 0, 255));
     LifeIconSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "LIFEICO.TGA", JO_COLOR_RGB(255, 0, 255));
     BombSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "BMBICO.TGA", JO_COLOR_RGB(255, 0, 255));
     DeathSpriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, "DEADICO.TGA", JO_COLOR_RGB(255, 0, 255));
+    ProgressBar = jo_sprite_add_tga(JO_ROOT_DIR, "PRG.TGA", JO_COLOR_Transparent);
+    jo_sprite_add_tga(JO_ROOT_DIR, "PRGBG.TGA", JO_COLOR_Transparent);
 
     // Load player model and bomb explosion model, we can consider these as imortal, since they are the same in every level
     TmfLoadMesh(&PlayerMesh, "PLAYER.TMF", JO_ROOT_DIR);
@@ -304,6 +381,11 @@ void GameInitializeMortal(bool coop, bool endless)
 {
     if (IsDisposed)
     {
+        // Set music to first track and reset volume to full
+        CurrentMusic = 0;
+        CurrentMusicVolume = 90;
+
+        BeforeReviveScoreCount = 0;
         CurrentLevelTick = 0;
         ScoreInitialize(&SessionScore);
         PlayerCount = coop ? 2 : 1;
@@ -336,6 +418,10 @@ void GameDisposeMortal()
             jo_free(Players);
         }
         
+        // Reset music
+        CurrentMusic = 0;
+        CurrentMusicVolume = 90;
+
         // Clear all bullets, NPCs and entities
         BulletListClear(false);
         NpcClearAll();
@@ -386,6 +472,7 @@ void GameUpdateTick(CurrentState * state)
                     if (action == PlayerActionBomb)
                     {
                         // start effect
+                        pcm_play(PlayerBombSound, PCM_PROTECTED, 6);
                         Players[player].StateData.BombEffectLifeTime = 0;
                     }
                 }
@@ -409,7 +496,17 @@ void GameUpdateTick(CurrentState * state)
                 }
                 
                 // Update pickups
-                PickupCheckAgainstPlayer(&Players[player]);
+                ScoreAddValue(&SessionScore, PickupCheckAgainstPlayer(&Players[player]));
+            }
+            else if (Players[player].Lives < 0 && (SessionScore.Value - BeforeReviveScoreCount) >= REQUIRED_REVIVE_POINTS)
+            {
+                Players[player].Lives = 1;
+                Players[player].Bombs = 1;
+                Players[player].StateData.IsControllable = false;
+                Players[player].StateData.SpawnTick = 1;
+                Players[player].HurtProtect = true;
+                Players[player].Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
+                BeforeReviveScoreCount = SessionScore.Value;
             }
         }
 

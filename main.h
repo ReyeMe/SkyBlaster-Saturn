@@ -2,6 +2,7 @@
 #define __MAIN_H__
 
 #include <jo/jo.h>
+#include "global_defines.h"
 #include "analogPad.h"
 #include "pcmsys.h"
 #include "pcmstm.h"
@@ -19,5 +20,6 @@
 #include "npc.h"
 #include "pickup.h"
 #include "game.h"
+#include "introCinematic.h"
 
 #endif

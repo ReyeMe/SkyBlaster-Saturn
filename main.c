@@ -4,13 +4,11 @@ void MenuCreateGame(bool backButton);
 void MenuCreateMain(bool backButton);
 void GameCreateGameOver();
 
+#define LWRAM_HEAP_SIZE 0x40000 // number of bytes to extend heap by
+
 /* Music stuff */
-#define LWRAM (2097152)
 void *loading_system_scratch_buffer = (void *)LWRAM;
 int snd_adx = 0;
-#define MENU_MUSIC 2
-#define GAME_MUSIC 3
-#define GAME_END_MUSIC 4
 
 /* Main 3D camera */
 static jo_camera camera;
@@ -20,9 +18,6 @@ static bool GameLoaded = false;
 
 /* Logo mesh collection */
 static SaturnMesh Logo;
-
-/* Logo mesh size */
-static int LogoSize;
 
 /* Game over score label text */
 static char GameOverScoreLabel[SCORE_TEXT_LEN + 1];
@@ -156,7 +151,7 @@ void GameCreateNew(bool backButton)
         WidgetsCreateButton(0, -10, "Resume game", MenuResumePauseGame)->IsVisible = false;
         WidgetsCreateButton(0, -18, "Exit", GameExit)->IsVisible = false;
 
-        CDDAPlaySingle(GAME_MUSIC, true);
+        CDDAPlaySingle(LVL1_MUSIC, true);
     }
     else
     {
@@ -401,7 +396,7 @@ void LoadingScreen()
  */
 void GameInitialize()
 {
-    jo_core_tv_off();
+    //jo_core_tv_off();
 
     // Load PoneSound logo
     jo_sprite_add_tga(JO_ROOT_DIR, "PONE.TGA", JO_COLOR_Transparent);
@@ -453,6 +448,14 @@ void Logic()
     MainLogic();
     MainDraw();
 
+    CdcStat cdStatus;
+    CDC_GetCurStat(&cdStatus);
+
+    if (cdStatus.status == CDC_ST_OPEN)
+    {
+        jo_goto_boot_menu();
+    }
+
     if (jo_is_pad1_key_pressed(JO_KEY_A) &&
         jo_is_pad1_key_pressed(JO_KEY_B) &&
         jo_is_pad1_key_pressed(JO_KEY_C) &&
@@ -468,28 +471,20 @@ void Logic()
     }
 }
 
-/** @brief Called every vertical blank
+/** @brief Initialize game
  */
-void VBlank()
+void GameStart()
 {
-    jo_get_inputs_vblank();
-    sdrv_stm_vblank_rq();
-}
-
-/** @brief Application entry point
- */
-void jo_main(void)
-{
-    // Prepare scene
-    jo_core_init(JO_COLOR_Black);
-
     // Load sound driver
     load_drv(ADX_MASTER_2304);
     snd_adx = add_adx_front_buffer(23040);
     add_adx_back_buffer((void *)LWRAM);
     CDDAInitialize();
 
-    *(volatile unsigned char *)0x060FFCD8 = 0x1F;
+    // V-Blank callback for audio handling
+    jo_core_add_vblank_callback(sdrv_stm_vblank_rq);
+
+    // 3D camera and seed
     jo_3d_camera_init(&camera);
     jo_random_seed = jo_time_get_frc();
 
@@ -501,7 +496,24 @@ void jo_main(void)
     MenuCreateMain(false);
 
     // Start game
-    slIntFunction(VBlank);
-    pcm_stream_init(30720, PCM_TYPE_8BIT);
-    pcm_stream_host(Logic);
+    jo_core_add_callback(Logic);
+}
+
+/** @brief Application entry point
+ */
+void jo_main()
+{
+    // Prepare scene
+    jo_core_init(JO_COLOR_Black);
+    *(volatile unsigned char *)0x060FFCD8 = 0x1F;
+
+    // extend the heap to use LWRAM as well otherwise our sprites won't fit in
+    // main memory
+    //jo_add_memory_zone((unsigned char *)LWRAM, LWRAM_HEAP_SIZE);
+
+    // Play intro cinematic
+    // Cinematics use their own sound driver, so we play it before loading pone sound
+    IntroCpkPlay(GameStart);
+    
+    jo_core_run();
 }

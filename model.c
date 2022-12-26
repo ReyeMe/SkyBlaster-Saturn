@@ -53,7 +53,13 @@ void TmfLoadMeshWithCustomTextureLoader(SaturnMesh * mesh,const char *file, cons
     stream += sizeof(TmfTexture) * header->TextureCount;
 
     // Load meshes
-    mesh->Meshes = jo_malloc_with_behaviour(sizeof(jo_3d_mesh) * header->ModelCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+    mesh->Meshes = jo_malloc(sizeof(jo_3d_mesh) * header->ModelCount);
+
+    if (mesh->Meshes == JO_NULL)
+    {
+        jo_core_error("Cannot load geometries");
+    }
+
     mesh->MeshCount = header->ModelCount;
 
     for (model = 0; model < header->ModelCount; model++)
@@ -62,9 +68,25 @@ void TmfLoadMeshWithCustomTextureLoader(SaturnMesh * mesh,const char *file, cons
         TmfModelHeader *modelHeader = (TmfModelHeader *)stream;
         stream += sizeof(TmfModelHeader);
 
-        mesh->Meshes[model].data.pntbl = jo_malloc_with_behaviour(sizeof(POINT) * modelHeader->VerticesCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-        mesh->Meshes[model].data.pltbl = jo_malloc_with_behaviour(sizeof(POLYGON) * modelHeader->FaceCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-        mesh->Meshes[model].data.attbl = jo_malloc_with_behaviour(sizeof(ATTR) * modelHeader->FaceCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        mesh->Meshes[model].data.pntbl = jo_malloc(sizeof(POINT) * modelHeader->VerticesCount);
+        mesh->Meshes[model].data.pltbl = jo_malloc(sizeof(POLYGON) * modelHeader->FaceCount);
+        mesh->Meshes[model].data.attbl = jo_malloc(sizeof(ATTR) * modelHeader->FaceCount);
+        
+        if (mesh->Meshes[model].data.pntbl == JO_NULL)
+        {
+            jo_core_error("Cannot load vertices (%d,%d,%d)", header->ModelCount, modelHeader->VerticesCount, modelHeader->FaceCount);
+        }
+
+        if (mesh->Meshes[model].data.pltbl == JO_NULL)
+        {
+            jo_core_error("Cannot load faces (%d,%d,%d)", header->ModelCount, modelHeader->VerticesCount, modelHeader->FaceCount);
+        }
+
+        if (mesh->Meshes[model].data.attbl == JO_NULL)
+        {
+            jo_core_error("Cannot load attributes (%d,%d,%d)", header->ModelCount, modelHeader->VerticesCount, modelHeader->FaceCount);
+        }
+
         mesh->Meshes[model].data.nbPoint = modelHeader->VerticesCount;
         mesh->Meshes[model].data.nbPolygon = modelHeader->FaceCount;
 

@@ -20,7 +20,7 @@ void FontInitialize()
 {
     int index = 0;
     Uint32 face = 0;
-    TmfLoadMesh(&numerics, "FNTNUM.TMF", "MODELS");
+    TmfLoadMesh(&numerics, "FNTNUM.TMF", JO_ROOT_DIR);
 
     for (index = 0; index < numerics.MeshCount; index++)
     {
@@ -30,7 +30,7 @@ void FontInitialize()
         }
     }
 
-    TmfLoadMesh(&letters, "FNTLET.TMF", "MODELS");
+    TmfLoadMesh(&letters, "FNTLET.TMF", JO_ROOT_DIR);
 
     for (index = 0; index < letters.MeshCount; index++)
     {

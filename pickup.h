@@ -52,8 +52,9 @@ void PickupClearAll();
 
 /** @brief Check whether player has picked up something
  *  @param player Current player
+ *  @return Collected score
  */
-void PickupCheckAgainstPlayer(Player *player);
+int PickupCheckAgainstPlayer(Player *player);
 
 /** @brief Update pickups on screen
  */

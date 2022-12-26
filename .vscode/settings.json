@@ -16,5 +16,6 @@
         "**/*.cue": true,
         "**/*.elf": true,
         "**/*.raw": true
-    }
+    },
+    "C_Cpp.loggingLevel": "Debug"
 }

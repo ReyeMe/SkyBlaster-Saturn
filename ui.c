@@ -81,6 +81,12 @@ void WidgetsClearAll()
 WidgetsWidget *WidgetsCreateWithData(int x, int y, void (*wProc)(WidgetsWidget *, WidgetMessages), void *data)
 {
     WidgetsWidget *created = jo_malloc(sizeof(WidgetsWidget));
+    
+    if (created == JO_NULL)
+    {
+        jo_core_error("Out of memory");
+    }
+
     created->x = x;
     created->y = y;
     created->IsVisible = true;
@@ -182,6 +188,12 @@ WidgetsWidget *WidgetsGetPrevSelectable()
 void WidgetsInitialize()
 {
     widgets = jo_malloc(sizeof(jo_list));
+
+    if (widgets == JO_NULL)
+    {
+        jo_core_error("Out of memory");
+    }
+
     jo_list_init(widgets);
 }
 

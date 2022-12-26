@@ -16,11 +16,11 @@
 // Player movement
 // -------------------------------------
 
-#define PLAYER_VELOCITY_MAX (100000)
-#define PLAYER_VELOCITY_DRAG (3000)
-#define PLAYER_VELOCITY_ACCEL (3650)
-#define PLAYER_VELOCITY_BACK_ACCEL (4500)
-#define PLAYER_VELOCITY_SIDE_ACCEL (2800)
+#define PLAYER_VELOCITY_MAX (120000)
+#define PLAYER_VELOCITY_DRAG (5000)
+#define PLAYER_VELOCITY_ACCEL (5050)
+#define PLAYER_VELOCITY_BACK_ACCEL (5500)
+#define PLAYER_VELOCITY_SIDE_ACCEL (6200)
 
 // -------------------------------------
 // Player action cooldown

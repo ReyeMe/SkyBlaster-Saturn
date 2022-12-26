@@ -24,7 +24,7 @@ static short PickupSound;
  *  @param pickup Pickup to collect
  *  @param player Player data
  */
-static void CollectPickup(const Pickup *pickup, Player *player)
+static int CollectPickup(const Pickup *pickup, Player *player)
 {
     switch (pickup->Type)
     {
@@ -32,7 +32,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
 
         if (player->Lives >= 9)
         {
-            //ScoreAddValue(&player->Score, 400);
+            return 400;
         }
         else
         {
@@ -45,7 +45,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
 
         if (player->GunLevel >= 2)
         {
-            //ScoreAddValue(&player->Score, 25);
+            return 25;
         }
         else
         {
@@ -58,7 +58,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
 
         if (player->Bombs >= 9)
         {
-            //ScoreAddValue(&player->Score, 200);
+            return 200;
         }
         else
         {
@@ -72,6 +72,7 @@ static void CollectPickup(const Pickup *pickup, Player *player)
     }
 
     pcm_play(PickupSound, PCM_PROTECTED, 6);
+    return 0;
 }
 
 /** @brief Check pickup against player
@@ -128,8 +129,9 @@ void PickupClearAll()
     jo_list_free_and_clear(&Pickups);
 }
 
-void PickupCheckAgainstPlayer(Player *player)
+int PickupCheckAgainstPlayer(Player *player)
 {
+    int score = 0;
     jo_node *tmp;
 
     for (tmp = Pickups.first; tmp != JO_NULL; tmp = tmp->next)
@@ -138,10 +140,12 @@ void PickupCheckAgainstPlayer(Player *player)
 
         if (CheckPickupAgainstPlayer(pickup, player))
         {
-            CollectPickup(pickup, player);
+            score = CollectPickup(pickup, player);
             jo_list_free_and_remove(&Pickups, tmp);
         }
     }
+
+    return score;
 }
 
 void PickupUpdate()

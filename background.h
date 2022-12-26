@@ -46,19 +46,54 @@
 #define BG_SKY_BLUE_G (64)
 #define BG_SKY_BLUE_B (255)
 
+#define BG_SKY_GREEN_R (38)
+#define BG_SKY_GREEN_G (127)
+#define BG_SKY_GREEN_B (0)
+
 #define BG_SKY_ORANGE_R (255)
 #define BG_SKY_ORANGE_G (125)
 #define BG_SKY_ORANGE_B (0)
+
+#define BG_SKY_RED_R (200)
+#define BG_SKY_RED_G (31)
+#define BG_SKY_RED_B (64)
+
+#define BG_SKY_PURPLE_R (131)
+#define BG_SKY_PURPLE_G (0)
+#define BG_SKY_PURPLE_B (200)
+
+#define BG_SKY_BLACK_R (0)
+#define BG_SKY_BLACK_G (0)
+#define BG_SKY_BLACK_B (0)
+
+#define BG_SKY_CRIMSON_R (120)
+#define BG_SKY_CRIMSON_G (8)
+#define BG_SKY_CRIMSON_B (46)
 
 /** @brief Sky color shift mode
  */
 typedef enum
 {
     /* Blue sky shade color */
-    BackgroundBlueSky,
+    BackgroundBlueSky,              // track 4 - water
+
+    /* Green sky shade */
+    BackgroundGreenSky,             // track 5 - forest
 
     /* Orange sky shade */
-    BackgroundOrangeSky
+    BackgroundOrangeSky,            // track 6
+
+    /* Red sky shade */
+    BackgroundRedSky,               // track 7 - corrupted
+
+    /* Purple sky shade */
+    BackgroundPurpleSky,            // track 8
+
+    /* Black sky */
+    BackgroundBlackSky,             // track 9 - edge
+
+    /* Crimson sky shade */
+    BackgroundCrimsonSky            // track 9 - final
 } BackgroundColorShift;
 
 /** @brief Initialize RGB0 background

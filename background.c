@@ -64,17 +64,47 @@ static void SetLineColors()
 
     switch (CurrentColorMode)
     {
-    case BackgroundOrangeSky:
-        target[X] = BG_SKY_ORANGE_R;
-        target[Y] = BG_SKY_ORANGE_G;
-        target[Z] = BG_SKY_ORANGE_B;
-        break;
+        case BackgroundPurpleSky:
+            target[X] = BG_SKY_PURPLE_R;
+            target[Y] = BG_SKY_PURPLE_G;
+            target[Z] = BG_SKY_PURPLE_B;
+            break;
 
-    default:
-        target[X] = BG_SKY_BLUE_R;
-        target[Y] = BG_SKY_BLUE_G;
-        target[Z] = BG_SKY_BLUE_B;
-        break;
+        case BackgroundGreenSky:
+            target[X] = BG_SKY_GREEN_R;
+            target[Y] = BG_SKY_GREEN_G;
+            target[Z] = BG_SKY_GREEN_B;
+            break;
+
+        case BackgroundOrangeSky:
+            target[X] = BG_SKY_ORANGE_R;
+            target[Y] = BG_SKY_ORANGE_G;
+            target[Z] = BG_SKY_ORANGE_B;
+            break;
+
+        case BackgroundRedSky:
+            target[X] = BG_SKY_RED_R;
+            target[Y] = BG_SKY_RED_G;
+            target[Z] = BG_SKY_RED_B;
+            break;
+
+        case BackgroundBlackSky:
+            target[X] = BG_SKY_BLACK_R;
+            target[Y] = BG_SKY_BLACK_G;
+            target[Z] = BG_SKY_BLACK_B;
+            break;
+
+        case BackgroundCrimsonSky:
+            target[X] = BG_SKY_CRIMSON_R;
+            target[Y] = BG_SKY_CRIMSON_G;
+            target[Z] = BG_SKY_CRIMSON_B;
+            break;
+
+        default:
+            target[X] = BG_SKY_BLUE_R;
+            target[Y] = BG_SKY_BLUE_G;
+            target[Z] = BG_SKY_BLUE_B;
+            break;
     }
 
     // Transition to target color
@@ -196,6 +226,11 @@ void BackgroundDraw()
         }
         jo_3d_pop_matrix();
 
+        jo_sprite_enable_gouraud_shading();
+
+        jo_color color = JO_COLOR_RGB(CurrentSkyColor[X], CurrentSkyColor[Y], CurrentSkyColor[Z]);
+        jo_set_gouraud_shading_colors(color,color,color,color);
+
         for (int index = 0; index < BG_CLOUDS_MAX; index++)
         {
             if (Clouds[index].Visible)
@@ -209,6 +244,8 @@ void BackgroundDraw()
                 jo_3d_pop_matrix();
             }
         }
+        
+        jo_sprite_disable_gouraud_shading();
     }
     jo_3d_pop_matrix();
 }
@@ -229,7 +266,9 @@ void BackgroundUdpate()
             Clouds[index].Pos.x += Clouds[index].Speed;
         }
 
-        if (NextSpawnTarget == ElapsedUpdates && !created && !Clouds[index].Visible)
+        if ((int)CurrentColorMode < (int)BackgroundBlackSky &&
+            NextSpawnTarget == ElapsedUpdates &&
+            !created && !Clouds[index].Visible)
         {
             created = true;
             NextSpawnTarget = BG_UPDATE_MIN + jo_random(BG_UPDATE_RANGE) - 1;
