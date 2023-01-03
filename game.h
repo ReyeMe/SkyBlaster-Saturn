@@ -1,14 +1,22 @@
 #ifndef __GAME_H__
 #define __GAME_H__
 
+/** @brief End game result
+ */
+typedef enum GameEndResult
+{
+    ResultNone,
+    ResultGameOver,
+    ResultDemoOver
+} GameEndResult;
+
 /** @brief Current game state
  */
 typedef struct
 {
     int Score;
-    bool GameEnd;
+    GameEndResult GameEnd;
 } CurrentState;
-
 
 /** @brief Loads and initializes assets that are present through the whole game
  */

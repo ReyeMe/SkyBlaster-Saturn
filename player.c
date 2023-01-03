@@ -3,8 +3,8 @@
 #include "model.h"
 #include "font3D.h"
 #include "score.h"
-#include "player.h"
 #include "bullet.h"
+#include "player.h"
 
 // -------------------------------------
 // Internal
@@ -18,17 +18,20 @@
 int GetNthValidController(const int controllerId)
 {
     int found = 0;
-
-    for (int controller = 0; controller < JO_INPUT_MAX_DEVICE; controller++)
+    
+    if (controllerId >= 0)
     {
-        if (jo_is_input_available(controller))
+        for (int controller = 0; controller < JO_INPUT_MAX_DEVICE; controller++)
         {
-            if (found == controllerId)
+            if (jo_is_input_available(controller))
             {
-                return controller;
+                if (found == controllerId)
+                {
+                    return controller;
+                }
+    
+                found++;
             }
-
-            found++;
         }
     }
 

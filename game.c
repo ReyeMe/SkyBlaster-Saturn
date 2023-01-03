@@ -1,5 +1,21 @@
 #include <jo/jo.h>
-#include "main.h"
+#include "global_defines.h"
+#include "pcmsys.h"
+#include "pcmstm.h"
+#include "pcmcdda.h"
+#include "musicHandler.h"
+#include "model.h"
+#include "score.h"
+#include "background.h"
+#include "bullet.h"
+#include "bulletList.h"
+#include "tools.h"
+#include "explosions.h"
+#include "player.h"
+#include "npc.h"
+#include "pickup.h"
+#include "gamemode.h"
+#include "gamemodeManager.h"
 #include "game.h"
 
 // -------------------------------------
@@ -42,9 +58,6 @@ static SaturnMesh PlayerShield;
 /* Explosion 3D mesh */
 static SaturnMesh ExplosionMesh;
 
-/* Number of players in game */
-static int PlayerCount;
-
 /* All present players */
 static Player * Players;
 
@@ -54,23 +67,14 @@ static Score SessionScore;
 /* Inidcates whether game state is disposed */
 static bool IsDisposed = true;
 
-/* Current level tick */
-static int CurrentLevelTick;
-
-/* Are we playing endless mode */
-static bool IsEndless;
-
-/* Current music track */
-static int CurrentMusic = 0;
-
-/* Game music volume */
-static int CurrentMusicVolume = 90;
-
 /* Number of points needed to revive player */
 #define REQUIRED_REVIVE_POINTS (2500)
 
 /* Score count state after players death*/
 static int BeforeReviveScoreCount = 0;
+
+/* Game mode data */
+static GamemodeData Gamemode;
 
 /** @brief Player got hit by a bullet or NPC
  */
@@ -79,7 +83,7 @@ static void PlayerHit(Player * player)
     if (!player->HurtProtect && player->Lives >= 0)
     {
         player->Lives--;
-        NpcSpawnExplosion(&player->Pos);
+        ExplosionsSpawn(&player->Pos);
 
         int bombsToDisperse = player->Bombs / 2;
         player->Bombs -= bombsToDisperse;
@@ -137,16 +141,16 @@ static void ReadBulletPositions(Bullet *bullet, bool isPlayer)
 {
     if (!isPlayer)
     {
-        for(int p = 0; p < PlayerCount; p++)
+        for(int player = 0; player < Gamemode.PlayerCount; player++)
         {
-            if (Players[p].Lives >= 0 && !Players[p].HurtProtect)
+            if (Players[player].Lives >= 0 && !Players[player].HurtProtect)
             {
-                jo_vector_fixed fromPlayer = {{bullet->Pos.x - Players[p].Pos.x, bullet->Pos.y - Players[p].Pos.y, 0}};
+                jo_vector_fixed fromPlayer = {{bullet->Pos.x - Players[player].Pos.x, bullet->Pos.y - Players[player].Pos.y, 0}};
                 jo_fixed distance = ToolsFastVectorLength(&fromPlayer);
 
                 if (distance < JO_FIXED_4)
                 {
-                    PlayerHit(&Players[p]);
+                    PlayerHit(&Players[player]);
                     break;
                 }
             }
@@ -165,7 +169,7 @@ static void PlayerShoot(Player * player)
         Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
         bullet->Pos.x = player->Pos.x;
         bullet->Pos.y = player->Pos.y;
-        bullet->Type = 0;
+        bullet->Type = BulletPlayerSimple;
         bullet->Velocity.x = -BULLET_SPEED;
         bullet->Velocity.y = 0;
         BulletInitializeMesh(bullet);
@@ -180,7 +184,7 @@ static void PlayerShoot(Player * player)
             Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
             bullet->Pos.x = player->Pos.x;
             bullet->Pos.y = player->Pos.y + offset;
-            bullet->Type = 0;
+            bullet->Type = BulletPlayerSimple;
             bullet->Velocity.x = -BULLET_SPEED;
             bullet->Velocity.y = 0;
             BulletInitializeMesh(bullet);
@@ -196,7 +200,7 @@ static void PlayerShoot(Player * player)
                 Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
                 bullet->Pos.x = player->Pos.x;
                 bullet->Pos.y = player->Pos.y;
-                bullet->Type = 0;
+                bullet->Type = BulletPlayerSimple;
                 bullet->Velocity.x = -(BULLET_SPEED / 2);
                 bullet->Velocity.y = (BULLET_SPEED / 2) * i;
                 BulletInitializeMesh(bullet);
@@ -279,73 +283,6 @@ static void DrawPlayer2Hud(const Player * player)
     }
 }
 
-/** @brief Set music to play
- * @param musicToSet Music ID, starts from 0
- */
-static void SetCurrentMusic(int musicToSet)
-{
-    int limitedMusicIndex = MAX(MIN(musicToSet, LVL_MUSIC_CNT - 1), 0);
-
-    if (CurrentMusic != limitedMusicIndex && CurrentMusicVolume > 0)
-    {
-        CurrentMusicVolume--;
-    }
-    else if (CurrentMusic == limitedMusicIndex && CurrentMusicVolume <= 90)
-    {
-        CurrentMusicVolume++;
-    }
-
-    if (CurrentMusicVolume <= 90)
-    {
-        int transformed = JO_DIV_BY_65536(jo_fixed_mult(jo_sin(CurrentMusicVolume), JO_MULT_BY_65536(7)));
-        transformed = JO_ABS(transformed) + 1;
-        CDDASetVolume(transformed, transformed);
-    }
-
-    if (CurrentMusicVolume == 0)
-    {
-        CurrentMusic = limitedMusicIndex;
-        int set = LVL1_MUSIC + MAX(MIN(CurrentMusic, LVL_MUSIC_CNT - 1), 0);
-        CDDAPlaySingle(set, true);
-    }
-}
-
-/** @brief Endless mode
- */
-static void EndlessModeLoop()
-{
-    static int spawnTimer = 0;
-    static int nextSpawn = 40;
-
-    int stage = SessionScore.Value / 4000;
-    int stageColor = JO_MIN(stage, (int)BackgroundCrimsonSky);
-    BackgroundSetColorShift(stageColor);
-    SetCurrentMusic(stageColor);
-
-    spawnTimer++;
-
-    if (nextSpawn < spawnTimer && CurrentLevelTick >= 350)
-    {
-        int spawnCount = jo_random(3 + MIN(stageColor, 3));
-
-        for (int i = 0; i < spawnCount; i++)
-        {
-            jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
-            NpcCreate(jo_random(4) - 1, &pos);
-
-            nextSpawn = 40 + jo_random(50 - stageColor);
-            spawnTimer = 0;
-        }
-    }
-}
-
-/** @brief Story mode
- */
-static void StoryModeLoop()
-{
-    
-}
-
 // -------------------------------------
 // Public
 // -------------------------------------
@@ -381,18 +318,16 @@ void GameInitializeMortal(bool coop, bool endless)
 {
     if (IsDisposed)
     {
-        // Set music to first track and reset volume to full
-        CurrentMusic = 0;
-        CurrentMusicVolume = 90;
+        Gamemode.CurrentScore = 0;
+        Gamemode.PlayerCount = coop ? 2 : 1;
+        Gamemode.TickCount = 0;
 
         BeforeReviveScoreCount = 0;
-        CurrentLevelTick = 0;
         ScoreInitialize(&SessionScore);
-        PlayerCount = coop ? 2 : 1;
-        IsEndless = endless;
-        Players = (Player*)jo_malloc_with_behaviour(sizeof(Player) * PlayerCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        Gamemode.Mode = endless ? GmEndless : GmStory;
+        Players = (Player*)jo_malloc_with_behaviour(sizeof(Player) * Gamemode.PlayerCount, JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
 
-        for (int player = 0; player < PlayerCount; player++)
+        for (int player = 0; player < Gamemode.PlayerCount; player++)
         {
             PlayerInititalize(&(Players[player]));
         }
@@ -402,6 +337,8 @@ void GameInitializeMortal(bool coop, bool endless)
             Players[0].Pos.y -= JO_FIXED_16 + JO_FIXED_8;
             Players[1].Pos.y += JO_FIXED_16 + JO_FIXED_8;
         }
+
+        GmStart(&Gamemode);
 
         IsDisposed = false;
     }
@@ -413,19 +350,18 @@ void GameDisposeMortal()
     {
         IsDisposed = true;    
 
-        for (int player = 0; player < PlayerCount; player++)
+        GmEnd(&Gamemode);
+
+        for (int player = 0; player < Gamemode.PlayerCount; player++)
         {
             jo_free(Players);
         }
         
-        // Reset music
-        CurrentMusic = 0;
-        CurrentMusicVolume = 90;
-
         // Clear all bullets, NPCs and entities
         BulletListClear(false);
         NpcClearAll();
         PickupClearAll();
+        ExplosionsClearAll();
     }
 }
 
@@ -433,14 +369,29 @@ void GameUpdateTick(CurrentState * state)
 {
     if (!IsDisposed)
     {
-        state->GameEnd = true;
+        Gamemode.CurrentScore = SessionScore.Value;
+        state->GameEnd = ResultGameOver;
+        
+        GamemodeTickResult result = GmTick(&Gamemode);
 
-        for (int player = 0; player < PlayerCount; player++)
+        if (result == GmTickResultGameOver || result == GmTickResultDemoOver)
+        {
+            if (result == GmTickResultDemoOver)
+            {
+                state->GameEnd = ResultDemoOver;
+            }
+
+            state->Score = SessionScore.Value;
+            return;
+        }
+
+        for (int player = 0; player < Gamemode.PlayerCount; player++)
         {
             if (Players[player].Lives >= 0)
             {
-                state->GameEnd = false;
+                state->GameEnd = ResultNone;
 
+                // Check whether player has diead and revive animation played
                 if (!Players[player].StateData.IsControllable)
                 {
                     Players[player].Pos.x -= JO_FIXED_1;
@@ -460,7 +411,7 @@ void GameUpdateTick(CurrentState * state)
                         }
                     }
 
-                    PlayerActions action = PlayerUpdate(&Players[player], player);
+                    PlayerActions action = PlayerUpdate(&Players[player], result != GmTickResultBlockControls ? player : -1);
 
                     // Do player actions
                     if (action == PlayerActionShoot)
@@ -510,34 +461,28 @@ void GameUpdateTick(CurrentState * state)
             }
         }
 
-        // Debug random enemy generator
-        if (IsEndless)
+        if (state->GameEnd == ResultNone)
         {
-            EndlessModeLoop();
+            // Update NPCs
+            int collectedScore = NpcUpdate(Players, Gamemode.PlayerCount, PlayerHit);
+
+            if (collectedScore > 0)
+            {
+                ScoreAddValue(&SessionScore, collectedScore);
+            }
+
+            // Update pickups
+            PickupUpdate();
+
+            // Update player bullets
+            BulletListUpdate(ReadBulletPositions);
+
+            ExplosionsUpdate();
+
+            Gamemode.TickCount++;
         }
-        else
-        {
-            StoryModeLoop();
-        }
-
-        // Update NPCs
-        int collectedScore = NpcUpdate(Players, PlayerCount, PlayerHit);
-
-        if (collectedScore > 0)
-        {
-            ScoreAddValue(&SessionScore, collectedScore);
-        }
-
-        // Update pickups
-        PickupUpdate();
-
-        // Update player bullets
-        BulletListUpdate(ReadBulletPositions);
-
-        NpcUpdateExplosions();
 
         state->Score = SessionScore.Value;
-        CurrentLevelTick++;
     }
 }
 
@@ -555,7 +500,7 @@ void GameDraw()
     {
         DrawPlayer1Hud(&Players[0]);
 
-        if (PlayerCount == 2)
+        if (Gamemode.PlayerCount == 2)
         {
             DrawPlayer2Hud(&Players[1]);
         }
@@ -567,7 +512,7 @@ void GameDraw()
             jo_3d_translate_matrix(0, 0, BG_PLACEMENT_DEPTH);
 
             // Draw players
-            for (int player = 0; player < PlayerCount; player++)
+            for (int player = 0; player < Gamemode.PlayerCount; player++)
             {
                 if (Players[player].Lives >= 0)
                 {
@@ -604,6 +549,7 @@ void GameDraw()
 
             // Update NPCs and entities
             NpcDraw();
+            ExplosionsDraw();
             BulletListDraw();
             PickupDraw();
         }

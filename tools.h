@@ -45,4 +45,70 @@ void ToolsFadeIn(Uint16 layer, void (*drawLoop)(void));
  */
 void ToolsFadeOut(Uint16 layer, void (*drawLoop)(void));
 
+/** @brief Draw rectangle line
+ *  @param first First point
+ *  @param second Second point
+ *  @param z Depth coordinate
+ *  @param color Line color
+ */
+void ToolsDrawLine(
+    const jo_pos2D *first, 
+    const jo_pos2D *second,
+    int z,
+    jo_color color);
+
+/** @brief Draw polygon
+ *  @param first First point
+ *  @param second Second point
+ *  @param third Third point
+ *  @param fourth Fourth point
+ *  @param z Depth coordinate
+ *  @param color Line color
+ *  @param filled Is polygon filled
+ */
+void ToolsDrawPolygon(
+    const jo_pos2D *first, 
+    const jo_pos2D *second,
+    const jo_pos2D *third,
+    const jo_pos2D *fourth,
+    const int z,
+    const jo_color color,
+    const bool filled);
+
+/** @brief Draw rectangle line
+ *  @param center Center point
+ *  @param size Rectangle size
+ *  @param angle Rotation angle
+ *  @param z Depth coordinate
+ *  @param color Line color
+ *  @param filled Is rectangle filled
+ */
+void ToolsDrawRotatedRectangle(
+    const jo_pos2D *center, 
+    const jo_size *size,
+    const ANGLE angle,
+    const int z,
+    const jo_color color,
+    const bool filled);
+
+/** @brief Draw rectangle
+ *  @param center Center point
+ *  @param size Rectangle size
+ *  @param z Depth coordinate
+ *  @param color Line color
+ *  @param filled Is rectangle filled
+ */
+void ToolsDrawRectangle(
+    const jo_pos2D *center, 
+    const jo_size *size,
+    const int z,
+    const jo_color color,
+    const bool filled);
+
+/** @brief Really fast acos, can have up to 10 deg of error, but good enough
+ * @param angle Angle to get arcus cosin of
+ * @return jo_fixed Arcus cosin
+ */
+jo_fixed ToolsFastAcos(const jo_fixed angle);
+
 #endif

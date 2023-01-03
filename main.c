@@ -1,17 +1,40 @@
-#include "main.h"
+#include <jo/jo.h>
+#include "global_defines.h"
+#include "analogPad.h"
+#include "pcmsys.h"
+#include "pcmstm.h"
+#include "pcmcdda.h"
+#include "musicHandler.h"
+#include "model.h"
+#include "font3D.h"
+#include "score.h"
+#include "background.h"
+#include "ui.h"
+#include "uiControls.h"
+#include "bullet.h"
+#include "bulletList.h"
+#include "tools.h"
+#include "explosions.h"
+#include "player.h"
+#include "npc.h"
+#include "pickup.h"
+#include "gamemode.h"
+#include "gamemodeEndless.h"
+#include "gamemodeStory.h"
+#include "gamemodeManager.h"
+#include "game.h"
+#include "introCinematic.h"
 
 void MenuCreateGame(bool backButton);
 void MenuCreateMain(bool backButton);
 void GameCreateGameOver();
+void GameCreateDemoOver();
 
 #define LWRAM_HEAP_SIZE 0x40000 // number of bytes to extend heap by
 
 /* Music stuff */
 void *loading_system_scratch_buffer = (void *)LWRAM;
 int snd_adx = 0;
-
-/* Main 3D camera */
-static jo_camera camera;
 
 /* Indicates whether game assets have loaded */
 static bool GameLoaded = false;
@@ -50,13 +73,13 @@ void MenuResumePauseGame(bool backButton)
         {
             // Game was not paused
             WidgetsSetCurrent(WidgetsById(2));
-            CDDASetVolume(4, 4);
+            MusicSetVolumeDirect(4);
         }
         else
         {
             // Game was paused
             WidgetsSetCurrent(WidgetsById(0));
-            CDDASetVolume(7, 7);
+            MusicSetVolumeDirect(7);
         }
     }
 }
@@ -98,17 +121,24 @@ void GameHandler(WidgetsWidget *widget, WidgetMessages message)
             // Create pause menu
             if (AnyStartButtonPressed())
             {
+                jo_clear_screen();
                 MenuResumePauseGame(false);
                 return;
             }
 
             CurrentState state;
+            state.GameEnd = ResultNone;
             GameUpdateTick(&state);
             CurrentGameEndScore = state.Score;
 
-            if (state.GameEnd)
+            if (state.GameEnd == ResultGameOver)
             {
                 GameCreateGameOver();
+            }
+
+            if (state.GameEnd == ResultDemoOver)
+            {
+                GameCreateDemoOver();
             }
 
             break;
@@ -132,8 +162,8 @@ void GameExit(bool backButton)
     {
         WidgetsClearAll();
         MenuCreateMain(backButton);
-        CDDASetVolume(7, 7);
-        CDDAPlaySingle(MENU_MUSIC, true);
+        MusicSetVolumeDirect(7);
+        MusicSetCurrentDirect(MENU_MUSIC, true);
     }
 }
 
@@ -151,7 +181,7 @@ void GameCreateNew(bool backButton)
         WidgetsCreateButton(0, -10, "Resume game", MenuResumePauseGame)->IsVisible = false;
         WidgetsCreateButton(0, -18, "Exit", GameExit)->IsVisible = false;
 
-        CDDAPlaySingle(LVL1_MUSIC, true);
+        MusicSetCurrentDirect(LVL1_MUSIC, true);
     }
     else
     {
@@ -255,8 +285,8 @@ void MenuCreateGame(bool backButton)
         WidgetsCreate(0, 17, DrawLogo)->IsSelectable = false;
         WidgetsCreateLabel(0, -5, "New game");
         
-        WidgetsCreateButton(0, -22, "Story", MenuCreatePlayerMode)->IsSelectable = false;
-        WidgetsSetCurrent(WidgetsCreateButton(0, -30, "Endless", MenuCreateEndless));
+        WidgetsSetCurrent(WidgetsCreateButton(0, -22, "Story demo", MenuCreatePlayerMode));
+        WidgetsCreateButton(0, -30, "Endless", MenuCreateEndless);
     }
 }
 
@@ -290,7 +320,26 @@ void GameCreateGameOver()
     WidgetsSetCurrent(WidgetsCreateButton(0, -10, "Try again", GameCreateNew));
     WidgetsCreateButton(0, -18, "Exit", GameExit);
 
-    CDDAPlaySingle(GAME_END_MUSIC, false);
+    MusicSetCurrentDirect(GAME_END_MUSIC, false);
+}
+
+/** @brief Called when player runs out of lives
+ *  @param backButton Indicates whether back button (B) was pressed
+ */
+void GameCreateDemoOver()
+{
+    WidgetsClearAll();
+
+    WidgetsCreateLabel(0, 15, "End of the demo");
+    WidgetsCreateLabel(0, 3, "Thanks");
+    WidgetsCreateLabel(0, -5, "for playing");
+
+    sprintf(GameOverScoreLabel, "%d", CurrentGameEndScore);
+    WidgetsCreateLabel(0, -18, GameOverScoreLabel);
+
+    WidgetsSetCurrent(WidgetsCreateButton(0, -28, "Exit", GameExit));
+
+    MusicSetCurrentDirect(CLEAR_MUSIC, false);
 }
 
 /** @brief Main gaim loop
@@ -348,17 +397,21 @@ void MainDraw()
     }
     jo_3d_pop_matrix();
 
-    // Draw scene
-    jo_3d_camera_look_at(&camera);
-
-    // Draw world background
-    BackgroundDraw();
-
-    if (DoGameDraw)
+    // Game world
+    jo_3d_push_matrix();
     {
-        GameDraw();
-        DoGameDraw = false;
+        jo_3d_translate_matrix_fixed(0, 0, (150) << 16);
+
+        // Draw world background
+        BackgroundDraw();
+
+        if (DoGameDraw)
+        {
+            GameDraw();
+            DoGameDraw = false;
+        }
     }
+    jo_3d_pop_matrix();
 }
 
 /** @brief Loading screen
@@ -396,7 +449,7 @@ void LoadingScreen()
  */
 void GameInitialize()
 {
-    //jo_core_tv_off();
+    jo_core_tv_off();
 
     // Load PoneSound logo
     jo_sprite_add_tga(JO_ROOT_DIR, "PONE.TGA", JO_COLOR_Transparent);
@@ -406,7 +459,7 @@ void GameInitialize()
     LoadingScreen();
 
     // Fade in loading screen
-    ToolsFadeIn(SPRON | NBG0ON, LoadingScreen);
+    ToolsFadeIn(SPRON | NBG2ON | RBG0ON | NBG0ON, LoadingScreen);
 
     // Load background assets
     BackgroundInitialize();
@@ -421,6 +474,7 @@ void GameInitialize()
     WidgetsControlsInitialize();
 
     // Load NPCs and entities
+    ExplosionsInitialize();
     NpcInitialize();
     PickupInitialize();
     BulletListInitialize();
@@ -432,11 +486,14 @@ void GameInitialize()
     GameLoaded = true;
 
     // Show all other layers and turn off TV
-    ToolsFadeOut(SPRON | NBG0ON, LoadingScreen);
+    ToolsFadeOut(SPRON | NBG2ON | RBG0ON | NBG0ON, LoadingScreen);
 
     // Load ever present RGB0 background
     BackgroundInitializeRGB0();
     jo_clear_screen();
+
+    jo_core_set_screens_order(JO_NBG0_SCREEN, JO_SPRITE_SCREEN, JO_NBG2_SCREEN, JO_RBG0_SCREEN);
+    jo_set_displayed_screens(JO_SPRITE_SCREEN | JO_NBG0_SCREEN | JO_NBG2_SCREEN | JO_RBG0_SCREEN);
 }
 
 /** @brief game logic gets called here
@@ -466,7 +523,7 @@ void Logic()
 
     if (startup)
     {
-        CDDAPlaySingle(MENU_MUSIC, true);
+        MusicSetCurrentDirect(MENU_MUSIC, true);
         startup = false;
     }
 }
@@ -484,8 +541,7 @@ void GameStart()
     // V-Blank callback for audio handling
     jo_core_add_vblank_callback(sdrv_stm_vblank_rq);
 
-    // 3D camera and seed
-    jo_3d_camera_init(&camera);
+    // Random seed
     jo_random_seed = jo_time_get_frc();
 
     /* Initialize game stuff */

@@ -7,6 +7,7 @@
 /* Game music */
 #define MENU_MUSIC (2)
 #define GAME_END_MUSIC (3)
+#define CLEAR_MUSIC (11)
 
 #define LVL_MUSIC_CNT (7)
 #define LVL1_MUSIC (4)

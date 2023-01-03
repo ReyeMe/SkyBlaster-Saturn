@@ -3,6 +3,7 @@
 #include "model.h"
 #include "font3D.h"
 #include "score.h"
+#include "explosions.h"
 #include "player.h"
 #include "bullet.h"
 #include "bulletList.h"
@@ -11,30 +12,136 @@
 #include "pickup.h"
 
 // -------------------------------------
-// Internal
+// Npc behaviours
 // -------------------------------------
 
-/* Explosion sound */
-static short ExplosionSound;
+Bullet *NpcSimpleBehaviour(Npc *npc)
+{
+    npc->Pos.x += npc->Velocity.x;
+    npc->Pos.y += npc->Velocity.y;
+    npc->Pos.z += npc->Velocity.z;
+    return JO_NULL;
+}
+
+Bullet *NpcDartBehaviour(Npc *npc)
+{
+    jo_fixed velocity = npc->Velocity.x;
+
+    if (npc->LifeTime > 170 && npc->LifeTime < 230)
+    {
+        velocity = 0;
+    }
+    else if (npc->LifeTime >= 230)
+    {
+        velocity = npc->Velocity.x * 8;
+    }
+
+    npc->Pos.x += velocity;
+    npc->Pos.y += npc->Velocity.y;
+    npc->Pos.z += npc->Velocity.z;
+    
+    return JO_NULL;
+}
+
+Bullet *NpcGruntBehaviour(Npc *npc)
+{
+    NpcSimpleBehaviour(npc);
+    
+    if (npc->LifeTime % 60 == 0)
+    {
+        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        bullet->Pos.x = npc->Pos.x;
+        bullet->Pos.y = npc->Pos.y;
+        bullet->Type = BulletNpcSimple;
+        bullet->Velocity.x = BULLET_SPEED >> 1;
+        bullet->Velocity.y = 0;
+        BulletInitializeMesh(bullet);
+        return bullet;
+    }
+    else
+    {
+        return JO_NULL;
+    }
+}
+
+Bullet *NpcHomingBehaviour(Npc *npc, Player *player, int playerCount)
+{
+    NpcDartBehaviour(npc);
+    
+    if (npc->LifeTime > 230 && npc->LifeTime < 240)
+    {
+        Player *closest = JO_NULL;
+        int distance = 0;
+
+        for (int p = 0; p < playerCount; p++)
+        {
+            int playerLocation = JO_ABS(player[p].Pos.x) + JO_ABS(player[p].Pos.y);
+            int npcLocation = JO_ABS(npc->Pos.x) + JO_ABS(npc->Pos.y);
+            int current = playerLocation - npcLocation;
+            current = JO_ABS(current);
+            
+            if (closest == JO_NULL || distance > current)
+            {
+                distance = current;
+                closest = &player[p];
+            }
+        }
+
+        if (closest != JO_NULL)
+        {
+            Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+            bullet->Pos.x = npc->Pos.x;
+            bullet->Pos.y = npc->Pos.y;
+            bullet->Target.x = closest->Pos.x;
+            bullet->Target.y = closest->Pos.y;
+            bullet->Type = BulletHoming;
+            bullet->Velocity.x = BULLET_SPEED >> 1;
+            bullet->Velocity.y = 0;
+            BulletInitializeMesh(bullet);
+
+            npc->LifeTime = 250;
+            return bullet;
+        }
+    }
+    
+    return JO_NULL;
+}
+
+Bullet *NpcSinusBehaviour(Npc *npc)
+{
+    npc->Pos.x += npc->Velocity.x;
+    npc->Pos.y += jo_sin(npc->LifeTime) >> 1;
+    npc->Pos.z += npc->Velocity.z;
+    
+    if (npc->LifeTime % 80 == 0)
+    {
+        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
+        bullet->Pos.x = npc->Pos.x;
+        bullet->Pos.y = npc->Pos.y;
+        bullet->Type = BulletNpcSimple;
+        bullet->Velocity.x = BULLET_SPEED >> 1;
+        bullet->Velocity.y = 0;
+        BulletInitializeMesh(bullet);
+        return bullet;
+    }
+    else
+    {
+        return JO_NULL;
+    }
+}
 
 /* Currently available NPCs */
 static jo_list Npcs;
 
-/* List of all current explosion sprites */
-static jo_list Explosions;
-
 /* Available NPC meshes */
 static SaturnMesh NpcMeshes[3];
-
-/* Index of first explosion sprite */
-static int ExplosionSpriteStartIndex;
 
 /** @brief Clear NPC list
  *  @param list Pointer to list to clear
  *  @param spawnExplosion When true, will spawn explosion where NPC was
  *  @return total score of all destroyed NPCs
  */
-static int ListClearInternal(jo_list *list, bool spawnExplosion, bool clearingExplosionList)
+static int ListClearInternal(jo_list *list, bool spawnExplosion)
 {
     int collectedScore = 0;
     jo_node *tmp;
@@ -49,12 +156,7 @@ static int ListClearInternal(jo_list *list, bool spawnExplosion, bool clearingEx
             collectedScore += NPC_BASESCORE * (((Npc *)data)->Type + 1);
 
             // Create explosion particle
-            NpcSpawnExplosion(&((Npc *)data)->Pos);
-        }
-
-        if (clearingExplosionList)
-        {
-            FreeSpriteQuadData(&((NpcExplosion*)data)->Mesh);
+            ExplosionsSpawn(&((Npc *)data)->Pos);
         }
 
         jo_free(data);
@@ -75,6 +177,7 @@ static int GetModelFromType(NpcTypes type)
         return 2;
 
     case NpcLightShipSinus:
+    case NpcRocketShip:
     case NpcLightShip:
         return 1;
 
@@ -93,6 +196,7 @@ static jo_fixed GetColliderSize(const Npc *npc)
     {
     case NpcLightShip:
     case NpcLightShipSinus:
+    case NpcRocketShip:
         return JO_FIXED_16;
 
     case NpcDart:
@@ -104,9 +208,10 @@ static jo_fixed GetColliderSize(const Npc *npc)
 
 /** @brief Check NPC against bullet
  *  @param npc NPC to check
+ *  @param hitLocation where NPC got hit
  *  @return True if got hit by bullet
  */
-static bool CheckNpcAgainstBullets(const Npc *npc)
+static bool CheckNpcAgainstBullets(const Npc *npc, jo_pos2D_fixed * hitLocation)
 {
     jo_node *tmp;
     jo_fixed colliderSize = GetColliderSize(npc);
@@ -115,17 +220,22 @@ static bool CheckNpcAgainstBullets(const Npc *npc)
     for (tmp = bullets->first; tmp != JO_NULL; tmp = tmp->next)
     {
         Bullet *bullet = (Bullet *)tmp->data.ptr;
+
         jo_vector_fixed fromNpc = {{bullet->Pos.x - npc->Pos.x, bullet->Pos.y - npc->Pos.y, 0}};
         jo_fixed distance = ToolsFastVectorLength(&fromNpc);
-
+    
         if (distance < colliderSize)
         {
+            hitLocation->x = bullet->Pos.x - npc->Pos.x;
+            hitLocation->y = bullet->Pos.y - npc->Pos.y;
             FreeSpriteQuadData(&bullet->Mesh);
             jo_list_free_and_remove(bullets, tmp);
             return true;
         }
     }
 
+    hitLocation->x = -JO_FIXED_360;
+    hitLocation->y = -JO_FIXED_360;
     return false;
 }
 
@@ -144,60 +254,43 @@ static bool CheckNpcAgainstPlayer(const Npc *npc, const Player *player)
 
 /** @brief Update NPC with unique behaviour
  *  @param npc NPC to update
+ *  @param player Player data
+ *  @param playerCount Number of all players
  */
-static void UpdateNpcWithBehaviour(Npc *npc)
+static void UpdateNpcWithBehaviour(Npc *npc, Player *player, int playerCount)
 {
-    jo_vector_fixed velocity = {{npc->Velocity.x, npc->Velocity.y, npc->Velocity.z}};
-    bool shoot = false;
+    Bullet *bullet = JO_NULL;
 
     switch (npc->Type)
     {
-    case NpcDart:
-        if (npc->LifeTime > 170 && npc->LifeTime < 230)
-        {
-            velocity.x = 0;
-        }
-        else if (npc->LifeTime >= 230)
-        {
-            velocity.x *= 8;
-        }
+        case NpcLightShip:
+            bullet = NpcGruntBehaviour(npc);
+            break;
 
-        break;
+        case NpcMine:
+            bullet = NpcSimpleBehaviour(npc);
+            break;
 
-    case NpcLightShipSinus:
-        velocity.y = jo_sin(npc->LifeTime) >> 1;
-        shoot = true;
+        case NpcLightShipSinus:
+            bullet = NpcSinusBehaviour(npc);
+            break;
 
-        if (npc->LifeTime > 359)
-        {
-            npc->LifeTime = 0;
-        }
+        case NpcDart:
+            bullet = NpcDartBehaviour(npc);
+            break;
 
-        break;
+        case NpcRocketShip:
+            bullet = NpcHomingBehaviour(npc, player, playerCount);
+            break;
 
-    case NpcLightShip:
-        shoot = true;
-        break;
-
-    default:
-        break;
+        default:
+            break;
     }
 
-    if (shoot && npc->LifeTime % 80 == 0)
+    if (bullet != JO_NULL)
     {
-        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-        bullet->Pos.x = npc->Pos.x;
-        bullet->Pos.y = npc->Pos.y;
-        bullet->Type = 1;
-        bullet->Velocity.x = BULLET_SPEED >> 1;
-        bullet->Velocity.y = 0;
-        BulletInitializeMesh(bullet);
         BulletListAdd(bullet, false);
     }
-
-    npc->Pos.x += velocity.x;
-    npc->Pos.y += velocity.y;
-    npc->Pos.z += velocity.z;
 }
 
 // -------------------------------------
@@ -207,44 +300,20 @@ static void UpdateNpcWithBehaviour(Npc *npc)
 void NpcInitialize()
 {
     jo_list_init(&Npcs);
-    jo_list_init(&Explosions);
 
-    ExplosionSound = load_16bit_pcm((Sint8 *)"EXP.PCM", 15360);
     TmfLoadMesh(&NpcMeshes[0], "BOMB.TMF", JO_ROOT_DIR);
     TmfLoadMesh(&NpcMeshes[1], "ENEMY01.TMF", JO_ROOT_DIR);
     TmfLoadMesh(&NpcMeshes[2], "ENEMY02.TMF", JO_ROOT_DIR);
-
-    for (int sprite = 0; sprite < NPC_EXP_FRM_CNT; sprite++)
-    {
-        char filename[9];
-        sprintf(filename, "EXP%d.TGA", sprite + 1);
-        int spriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, filename, JO_COLOR_RGB(255, 0, 255));
-
-        if (sprite == 0)
-        {
-            ExplosionSpriteStartIndex = spriteIndex;
-        }
-    }
-}
-
-void NpcSpawnExplosion(const jo_pos3D_fixed *pos)
-{
-    NpcExplosion *explosion = (NpcExplosion *)jo_malloc_with_behaviour(sizeof(NpcExplosion), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-    explosion->Pos.x = pos->x;
-    explosion->Pos.y = pos->y;
-    explosion->Pos.z = pos->z;
-    explosion->LifeTime = 0;
-    CreateSpriteQuad(&explosion->Mesh, ExplosionSpriteStartIndex);
-
-    jo_list_add_ptr(&Explosions, explosion);
-
-    // Play sound
-    pcm_play(ExplosionSound, PCM_PROTECTED, 6);
 }
 
 Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos)
 {
     Npc *npc = (Npc *)jo_malloc(sizeof(Npc));
+
+    npc->Health = type + 1;
+    npc->LastHit.x = -JO_FIXED_360;
+    npc->LastHit.x = -JO_FIXED_360;
+
     npc->Type = type;
     npc->Pos.x = pos->x;
     npc->Pos.y = pos->y;
@@ -257,11 +326,15 @@ Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos)
     switch (type)
     {
     case NpcDart:
+    case NpcRocketShip:
         npc->Velocity.x = JO_FIXED_1_DIV_2;
         break;
 
-    case NpcMine:
     case NpcLightShipSinus:
+        npc->Velocity.x = JO_FIXED_1 + (JO_FIXED_1 >> 2);
+        break;
+
+    case NpcMine:
     case NpcLightShip:
         npc->Velocity.x = JO_FIXED_1 + (JO_FIXED_1 >> 2);
         break;
@@ -276,13 +349,12 @@ Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos)
 
 void NpcClearAll()
 {
-    ListClearInternal(&Npcs, false, false);
-    ListClearInternal(&Explosions, false, true);
+    ListClearInternal(&Npcs, false);
 }
 
 int NpcDestroyAll()
 {
-    return ListClearInternal(&Npcs, true, false);
+    return ListClearInternal(&Npcs, true);
 }
 
 int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
@@ -299,38 +371,12 @@ int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
         if (distance < range)
         {
             score += NPC_BASESCORE * (npc->Type + 1);
-            NpcSpawnExplosion(&npc->Pos);
+            ExplosionsSpawn(&npc->Pos);
             jo_list_free_and_remove(&Npcs, tmp);
         }
     }
 
     return score;
-}
-
-void NpcUpdateExplosions()
-{
-    jo_node *tmp;
-
-    for (tmp = Explosions.first; tmp != JO_NULL; tmp = tmp->next)
-    {
-        NpcExplosion *explosion = (NpcExplosion *)tmp->data.ptr;
-
-        if (explosion->LifeTime % 2 == 0)
-        {
-            explosion->Frame++;
-        }
-
-        if (explosion->Frame >= NPC_EXP_FRM_CNT)
-        {
-            FreeSpriteQuadData(&explosion->Mesh);
-            jo_list_free_and_remove(&Explosions, tmp);
-        }
-        else
-        {
-            explosion->Pos.x += JO_FIXED_1_DIV_2;
-            explosion->LifeTime++;
-        }
-    }
 }
 
 int NpcUpdate(Player *player, int playerCount, void (*PlayerHitCallback)(Player * player))
@@ -343,19 +389,32 @@ int NpcUpdate(Player *player, int playerCount, void (*PlayerHitCallback)(Player 
     {
         Npc *npc = (Npc *)tmp->data.ptr;
 
-        UpdateNpcWithBehaviour(npc);
+        UpdateNpcWithBehaviour(npc, player, playerCount);
         npc->LifeTime++;
+        npc->LastHitTime++;
+        jo_pos2D_fixed hitLocation;
 
-        if (CheckNpcAgainstBullets(npc))
+        if (CheckNpcAgainstBullets(npc, &hitLocation))
         {
-            score += NPC_BASESCORE * (npc->Type + 1);
-            NpcSpawnExplosion(&npc->Pos);
-            jo_list_free_and_remove(&Npcs, tmp);
+            npc->Health--;
 
-            // If NPC was destroyed by player, make it possible to spawn pickup
-            if (chance < 80)
+            if (npc->Health <= 0)
             {
-                PickupCreate(&npc->Pos, chance < 35 ? (chance < 10 ? PickupTypeLife : PickupTypeBomb) : PickupTypeGun);
+                score += NPC_BASESCORE * (npc->Type + 1);
+                ExplosionsSpawn(&npc->Pos);
+                jo_list_free_and_remove(&Npcs, tmp);
+
+                // If NPC was destroyed by player, make it possible to spawn pickup
+                if (chance < 80)
+                {
+                    PickupCreate(&npc->Pos, chance < 35 ? (chance < 10 ? PickupTypeLife : PickupTypeBomb) : PickupTypeGun);
+                }
+            }
+            else
+            {
+                npc->LastHitTime = 0;
+                npc->LastHit.x = hitLocation.x;
+                npc->LastHit.y = hitLocation.y;
             }
         }
         else
@@ -368,8 +427,14 @@ int NpcUpdate(Player *player, int playerCount, void (*PlayerHitCallback)(Player 
                 {
                     hit = true;
                     PlayerHitCallback(&player[p]);
-                    NpcSpawnExplosion(&npc->Pos);
-                    jo_list_free_and_remove(&Npcs, tmp);
+                    npc->Health -= 2;
+
+                    if (npc->Health <= 0)
+                    {
+                        ExplosionsSpawn(&npc->Pos);
+                        jo_list_free_and_remove(&Npcs, tmp);
+                    }
+
                     break;
                 }
             }
@@ -401,19 +466,33 @@ void NpcDraw()
             TmfDraw(&NpcMeshes[modelNumber]);
         }
         jo_3d_pop_matrix();
-    }
 
-    for (tmp = Explosions.first; tmp != JO_NULL; tmp = tmp->next)
-    {
-        NpcExplosion *explosion = (NpcExplosion *)tmp->data.ptr;
-
-        jo_3d_push_matrix();
+        // Enemy was hit
+        if (npc->LastHit.x != -JO_FIXED_360 && npc->LastHitTime < 25)
         {
-            jo_3d_translate_matrix_fixed(explosion->Pos.x, explosion->Pos.y, explosion->Pos.z);
-
-            jo_3d_set_texture(&explosion->Mesh, ExplosionSpriteStartIndex + explosion->Frame);
-            jo_3d_draw(&explosion->Mesh);
+            FIXED point[XYZ] = { npc->Pos.x + npc->LastHit.x, npc->Pos.y + npc->LastHit.y, npc->Pos.z };
+            FIXED projected[XY];
+            slConvert3Dto2DFX(point, projected);
+  
+            int scale = npc->LastHitTime;
+  
+            jo_pos2D screenPoint = { projected[X]>>16, projected[Y]>>16 };
+  
+            for (int particle = 0; particle < 4; particle++)
+            {
+                jo_size rectangleScale = { scale - (particle << 1), scale - (particle << 1) };
+  
+                if (rectangleScale.width > 0 && rectangleScale.width < 16)
+                {
+                    ANGLE angle = DEGtoANG((npc->LastHitTime + (particle << 2)) << 2);
+                    ToolsDrawRotatedRectangle(&screenPoint, &rectangleScale, angle, 100, JO_COLOR_Yellow, false);
+                }
+            }
         }
-        jo_3d_pop_matrix();
     }
+}
+
+int NpcCount()
+{
+    return Npcs.count;
 }

@@ -120,3 +120,152 @@ void ToolsFadeOut(Uint16 layer, void (*drawLoop)(void))
     slScrPosNbg1(0, 0);
     jo_core_tv_off();
 }
+
+/** @brief Draw rectangle line
+ *  @param first First point
+ *  @param second Second point
+ *  @param z Depth coordinate
+ *  @param color Line color
+ */
+void ToolsDrawLine(
+    const jo_pos2D *first, 
+    const jo_pos2D *second,
+    int z,
+    jo_color color)
+{
+    SPRITE line;
+    line.COLR = color;
+    line.CTRL = FUNC_Line;
+    line.PMOD = 0x0080 |((CL32KRGB & 7) << 3);
+    line.GRDA = 0;
+    line.XA = first->x;
+    line.YA = first->y;
+    line.XB = second->x;
+    line.YB = second->y;
+    slSetSprite(&line, JO_MULT_BY_65536(z));
+}
+
+/** @brief Draw rectangle line
+ *  @param first First point
+ *  @param second Second point
+ *  @param third Third point
+ *  @param fourth Fourth point
+ *  @param z Depth coordinate
+ *  @param color Line color
+ *  @param filled Is polygon filled
+ */
+void ToolsDrawPolygon(
+    const jo_pos2D *first, 
+    const jo_pos2D *second,
+    const jo_pos2D *third,
+    const jo_pos2D *fourth,
+    const int z,
+    const jo_color color,
+    const bool filled)
+{
+    SPRITE line;
+    line.COLR = color;
+    line.CTRL = (filled ? FUNC_Polygon : FUNC_PolyLine);
+    line.PMOD = 0x0080 |((CL32KRGB & 7) << 3);
+    line.GRDA = 0;
+    line.XA = first->x;
+    line.YA = first->y;
+    line.XB = second->x;
+    line.YB = second->y;
+    line.XC = third->x;
+    line.YC = third->y;
+    line.XD = fourth->x;
+    line.YD = fourth->y;
+    slSetSprite(&line, JO_MULT_BY_65536(z));
+}
+
+/** @brief Draw rectangle line
+ *  @param center Center point
+ *  @param size Rectangle size
+ *  @param angle Rotation angle
+ *  @param z Depth coordinate
+ *  @param color Line color
+ *  @param filled Is polygon filled
+ */
+void ToolsDrawRotatedRectangle(
+    const jo_pos2D *center, 
+    const jo_size *size,
+    const ANGLE angle,
+    const int z,
+    const jo_color color,
+    const bool filled)
+{
+    jo_fixed sin = slSin(angle);
+    jo_fixed cos = slCos(angle);
+
+    int axisX = jo_fixed_mult(((int)size->width) << 16, cos) >> 16;
+    int axisY = jo_fixed_mult(((int)size->height) << 16, sin) >> 16;
+
+    jo_pos2D first = {
+        center->x - axisX,
+        center->y - axisY
+    };
+
+    jo_pos2D second = {
+        center->x - axisY,
+        center->y + axisX
+    };
+
+    jo_pos2D third = {
+        center->x + axisX,
+        center->y + axisY
+    };
+
+    jo_pos2D fourth = {
+        center->x + axisY,
+        center->y - axisX
+    };
+    
+    ToolsDrawPolygon(&first, &second, &third, &fourth, z, color, filled);
+}
+
+/** @brief Draw rectangle
+ *  @param center Center point
+ *  @param size Rectangle size
+ *  @param z Depth coordinate
+ *  @param color Line color
+ *  @param filled Is rectangle filled
+ */
+void ToolsDrawRectangle(
+    const jo_pos2D *center, 
+    const jo_size *size,
+    const int z,
+    const jo_color color,
+    const bool filled)
+{
+    int halfWidth = size->width >> 1;
+    int halfHeight = size->height >> 1;
+
+    jo_pos2D first = {
+        center->x - halfWidth,
+        center->y - halfHeight
+    };
+
+    jo_pos2D second = {
+        center->x - halfWidth,
+        center->y + halfHeight
+    };
+
+    jo_pos2D third = {
+        center->x + halfWidth,
+        center->y + halfHeight
+    };
+
+    jo_pos2D fourth = {
+        center->x + halfWidth,
+        center->y - halfHeight
+    };
+
+    ToolsDrawPolygon(&first, &second, &third, &fourth, z, color, filled);
+}
+
+jo_fixed ToolsFastAcos(const jo_fixed angle)
+{
+    static jo_fixed constant = (jo_fixed)((3.14159f - 1.57079f) * JO_FIXED_1);
+    return jo_fixed_mult(constant, angle);
+}

@@ -1,4 +1,5 @@
 #include <jo/jo.h>
+#include <jo/vdp2.h>
 #include "background.h"
 
 // -------------------------------------
@@ -25,14 +26,26 @@ typedef struct
 /* Current sky color */
 static int CurrentSkyColor[XYZ] = {BG_SKY_BLUE_R, BG_SKY_BLUE_G, BG_SKY_BLUE_B};
 
+/* Current sky color mix */
+static int CurrentColorMix = 32;
+
 /* Current sky color mode */
 static BackgroundColorShift CurrentColorMode = BackgroundBlueSky;
 
 /* RGB0 plane palette */
-static jo_palette Rgb0Palette;
+static jo_palette Rgb0aPalette;
+
+/* NBG1 plane palette */
+static jo_palette Nbg1Palette;
 
 /* Plane movement offset */
-static int PlaneMovement;
+static jo_fixed PlaneMovement;
+
+/* Current movement speed */
+static int MovementSpeed = JO_FIXED_1;
+
+/* Maximum movement speed */
+static int MovementSpeedCap = JO_FIXED_1;
 
 /* Index of first cloud texture */
 static int CloudTextureStartIndex;
@@ -48,11 +61,19 @@ static int NextSpawnTarget;
 
 /** @brief Palette loader for background
  */
-static jo_palette *BackgroundPaletteHandling(void)
+static jo_palette *BackgroundPaletteAHandling(void)
 {
     // We create a new palette for each image. It's not optimal but OK for a demo.
-    jo_create_palette(&Rgb0Palette);
-    return (&Rgb0Palette);
+    jo_create_palette(&Rgb0aPalette);
+    return (&Rgb0aPalette);
+}
+
+/** @brief Palette loader for background
+ */
+static jo_palette *BackgroundPaletteNbgHandling(void)
+{
+    jo_create_palette(&Nbg1Palette);
+    return (&Nbg1Palette);
 }
 
 /** @brief Set shading colors for each scan line
@@ -61,6 +82,8 @@ static void SetLineColors()
 {
     // Set target level color
     int target[XYZ];
+    int targetMix = BG_MIX_MAX;
+    bool inTransition = false;
 
     switch (CurrentColorMode)
     {
@@ -68,42 +91,49 @@ static void SetLineColors()
             target[X] = BG_SKY_PURPLE_R;
             target[Y] = BG_SKY_PURPLE_G;
             target[Z] = BG_SKY_PURPLE_B;
+            targetMix = BG_SKY_PURPLE_A;
             break;
 
         case BackgroundGreenSky:
             target[X] = BG_SKY_GREEN_R;
             target[Y] = BG_SKY_GREEN_G;
             target[Z] = BG_SKY_GREEN_B;
+            targetMix = BG_SKY_GREEN_A;
             break;
 
         case BackgroundOrangeSky:
             target[X] = BG_SKY_ORANGE_R;
             target[Y] = BG_SKY_ORANGE_G;
             target[Z] = BG_SKY_ORANGE_B;
+            targetMix = BG_SKY_ORANGE_A;
             break;
 
         case BackgroundRedSky:
             target[X] = BG_SKY_RED_R;
             target[Y] = BG_SKY_RED_G;
             target[Z] = BG_SKY_RED_B;
+            targetMix = BG_SKY_RED_A;
             break;
 
         case BackgroundBlackSky:
             target[X] = BG_SKY_BLACK_R;
             target[Y] = BG_SKY_BLACK_G;
             target[Z] = BG_SKY_BLACK_B;
+            targetMix = BG_SKY_BLACK_A;
             break;
 
         case BackgroundCrimsonSky:
             target[X] = BG_SKY_CRIMSON_R;
             target[Y] = BG_SKY_CRIMSON_G;
             target[Z] = BG_SKY_CRIMSON_B;
+            targetMix = BG_SKY_CRIMSON_A;
             break;
 
         default:
             target[X] = BG_SKY_BLUE_R;
             target[Y] = BG_SKY_BLUE_G;
             target[Z] = BG_SKY_BLUE_B;
+            targetMix = BG_SKY_BLUE_A;
             break;
     }
 
@@ -111,46 +141,66 @@ static void SetLineColors()
     for (int component = 0; component < XYZ; component++)
     {
         if (target[component] > CurrentSkyColor[component])
+        {
+            inTransition = true;
             CurrentSkyColor[component]++;
+        }
         if (target[component] < CurrentSkyColor[component])
+        {
+            inTransition = true;
             CurrentSkyColor[component]--;
+        }
     }
 
-    // Sets palette
-    Uint16 *colorPalette = (Uint16 *)BG_COLOR_RAM_ADR;
-
-    for (int line = 0; line < JO_TV_HEIGHT; line++)
+    // Transition to target mix
+    if (targetMix > CurrentColorMix)
     {
-        jo_fixed multiplier = jo_sin(line / 3);
+        inTransition = true;
+        CurrentColorMix++;
+    }
+
+    if (targetMix < CurrentColorMix)
+    {
+        inTransition = true;
+        CurrentColorMix--;
+    }
+
+    if (inTransition)
+        MovementSpeedCap = JO_FIXED_2;
+    else
+        MovementSpeedCap = JO_FIXED_1;
+
+    if (MovementSpeed > MovementSpeedCap)
+        MovementSpeed -= JO_DIV_BY_8(JO_FIXED_1);
+    else if (MovementSpeed < MovementSpeedCap)
+        MovementSpeed += JO_DIV_BY_16(JO_FIXED_1);
+
+    // Sets palette
+    Uint16 *colorPalette = (Uint16 *)Rgb0aPalette.data;
+
+    for (int line = 0; line < 150; line++)
+    {
+        jo_fixed multiplier = JO_FIXED_1 - jo_sin(line / 3);
 
         int r = jo_fixed2int(multiplier * CurrentSkyColor[X]);
         int g = jo_fixed2int(multiplier * CurrentSkyColor[Y]);
         int b = jo_fixed2int(multiplier * CurrentSkyColor[Z]);
 
-        colorPalette[line + 32] = JO_COLOR_RGB(r, g, b);
+        colorPalette[line] = JO_COLOR_RGB(r, g, b);
     }
+    
+    slColRateNbg2(CurrentColorMix);
 }
 
 /** @brief Line color table setup (to have this work, remove K_LINECOL from slKtableRB or slKtableRA in vdp2.c in jo)
  */
-static void LoadLineColorTable()
+static void LoadColorCalc()
 {
+    // set color ratio between RGB0 and NBG2
+    slColorCalcOn(RBG0ON | NBG2ON);
+    slColorCalc(CC_RATE | CC_EXT | NBG2ON | RBG0ON);
+    
     SetLineColors();
-
-    // Set indexes to palette
-    Uint16 *colorPalette = (Uint16 *)BG_LINE_COLOR_TABLE;
-
-    for (int line = 0; line < JO_TV_HEIGHT; line++)
-    {
-        colorPalette[line] = line + BG_COLOR_PAL_OFFSET;
-    }
-
-    // Apply line color with ration on RGB0
-    slLineColDisp(RBG0ON);
-    slLineColTable((void *)BG_LINE_COLOR_TABLE);
-    slColorCalc(CC_RATE | CC_2ND | RBG0ON);
-    slColorCalcOn(RBG0ON);
-    slColRateLNCL(0x1A);
 }
 
 /** @brief Generate cloud
@@ -178,22 +228,127 @@ static void GenerateCloud(Cloud *cloud)
 }
 
 // -------------------------------------
+// Handle NBG2 layer loading as I cannot get it to work properly in jo
+// -------------------------------------
+
+#define NBG2_CEL_ADR            (VDP2_VRAM_B1   + 0x02000)
+#define NBG2_MAP_ADR            (VDP2_VRAM_B1   + 0x18000)
+
+#define CELL_WIDTH              (8)
+#define CELL_HEIGHT             (8)
+#define CELL_SIZE               (CELL_WIDTH * CELL_HEIGHT)
+#define CELL_COUNT_PER_ROW      (64)
+#define MAP_LENGTH              (512 * 8)
+
+/** @brief Copy of jo_img_to_vdp2_cells from core
+ * @param img Image co convert
+ * @param verticalFlip Flip vertically
+ * @param cell Cell memory
+ */
+void ImgToCells(const jo_img_8bits * const img, const bool verticalFlip, unsigned char *cell)
+{
+    register int                x;
+    register int                y;
+    register int                cell_x;
+    register int                cell_y;
+    register int                line_y;
+    register int                i;
+
+    for (JO_ZERO(x); x < img->width; x += CELL_WIDTH)
+    {
+        for (JO_ZERO(y), JO_ZERO(line_y); y < img->height; y += CELL_HEIGHT, line_y += JO_MULT_BY_8(img->width))
+        {
+            cell_x = x;
+            cell_y = line_y;
+            for (JO_ZERO(i); i < CELL_SIZE; ++i, ++cell, cell_y += img->width)
+            {
+                if (i != 0 && JO_MOD_POW2(i, CELL_WIDTH) == 0)
+                {
+                     ++cell_x;
+                     cell_y = line_y;
+                }
+                if (!verticalFlip)
+                    *cell = img->data[(img->width - cell_x - 1) + cell_y];
+                else
+                    *cell = img->data[cell_x + cell_y];
+            }
+        }
+    }
+}
+
+/** @brief Copy of __jo_create_map from core
+ * @param img Image co convert
+ * @param map Map memory
+ * @param paletteId Image palette
+ * @param mapOffset Map memory offset
+ */
+static void ImgToMap(const jo_img_8bits * const img, unsigned short *map, const unsigned short paletteId, const int mapOffset)
+{
+    register int                x;
+    register int                y;
+    register int                x2;
+    register int                y2;
+    register int                i;
+    unsigned short              paloff;
+
+    paloff = JO_MULT_BY_4096(paletteId);
+    y = JO_DIV_BY_8(img->height);
+    x = JO_DIV_BY_8(img->width);
+    JO_ZERO(y2);
+    JO_ZERO(x2);
+
+    for (JO_ZERO(i); i < MAP_LENGTH; ++i)
+    {
+        if (i != 0 && JO_MOD_POW2(i, CELL_COUNT_PER_ROW) == 0)
+            ++x2;
+        if (x2 >= x)
+            JO_ZERO(x2);
+        *map = (JO_MULT_BY_2(y2 + x2 * y) | paloff) + mapOffset;
+            ++map;
+        ++y2;
+        if (y2 >= y)
+            JO_ZERO(y2);
+    }
+}
+
+/** @brief Load repeating image into NBG2
+ * @param image Image to load
+ * @param paletteId Image palette
+ * @param verticalFlip Flip vertically
+ */
+static void LoadNbg2Image(const jo_img_8bits * image, const int paletteId, const bool verticalFlip)
+{
+    slPlaneNbg2(PL_SIZE_1x1);
+    slCharNbg2(COL_TYPE_256, CHAR_SIZE_1x1);
+    slMapNbg2((void *)NBG2_MAP_ADR, (void *)NBG2_MAP_ADR, (void *)NBG2_MAP_ADR, (void *)NBG2_MAP_ADR);
+    slPageNbg2((void *)NBG2_CEL_ADR, 0, PNB_1WORD | CN_12BIT);
+    ImgToCells(image, verticalFlip, (void *)NBG2_CEL_ADR);
+    ImgToMap(image, (void *)NBG2_MAP_ADR, paletteId, JO_VDP2_CELL_TO_MAP_OFFSET((void *)NBG2_CEL_ADR));
+}
+
+// -------------------------------------
 // Public
 // -------------------------------------
 
 void BackgroundInitializeRGB0()
 {
     jo_enable_background_3d_plane(JO_COLOR_Black);
-    jo_set_tga_palette_handling(BackgroundPaletteHandling);
 
     // Load RGB0 texture
     jo_img_8bits img;
     img.data = JO_NULL;
+    jo_set_tga_palette_handling(BackgroundPaletteAHandling);
     jo_tga_8bits_loader(&img, JO_ROOT_DIR, "FLOOR.TGA", 0);
-    jo_background_3d_plane_a_img(&img, Rgb0Palette.id, true, true);
+    jo_vdp2_set_rbg0_plane_a_8bits_image(&img, Rgb0aPalette.id, true, true);
     jo_free_img(&img);
 
-    LoadLineColorTable();
+    img.data = JO_NULL;
+    jo_set_tga_palette_handling(BackgroundPaletteNbgHandling);
+    jo_tga_8bits_loader(&img, JO_ROOT_DIR, "FLOOR2.TGA", 0);
+    LoadNbg2Image(&img, Nbg1Palette.id, true);
+    jo_free_img(&img);
+
+    LoadColorCalc();
 }
 
 void BackgroundInitialize()
@@ -207,9 +362,10 @@ void BackgroundInitialize()
         Clouds[index].Visible = false;
     }
 
-    CloudTextureStartIndex = jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD1.TGA", JO_COLOR_White);
-    jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD2.TGA", JO_COLOR_White);
-    jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD3.TGA", JO_COLOR_White);
+    CloudTextureStartIndex = jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD1.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD2.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD3.TGA", JO_COLOR_Purple);
+
 }
 
 void BackgroundDraw()
@@ -221,10 +377,12 @@ void BackgroundDraw()
         // Draw floor
         jo_3d_push_matrix();
         {
-            jo_3d_translate_matrix(PlaneMovement, 0, BG_PLACEMENT_DEPTH);
+            jo_3d_translate_matrix_fixed(PlaneMovement, 360 << 16, -((-BG_PLACEMENT_DEPTH) << 16));
             jo_background_3d_plane_a_draw(true);
         }
         jo_3d_pop_matrix();
+
+        slScrMoveNbg2(JO_FIXED_1_DIV_2, 0);
 
         jo_sprite_enable_gouraud_shading();
 
@@ -272,12 +430,18 @@ void BackgroundUdpate()
         {
             created = true;
             NextSpawnTarget = BG_UPDATE_MIN + jo_random(BG_UPDATE_RANGE) - 1;
+
+            if ((int)CurrentColorMode >= (int)BackgroundRedSky)
+            {
+                NextSpawnTarget += BG_UPDATE_MIN * ((int)CurrentColorMode - 1);
+            }
+
             ElapsedUpdates = BG_UPDATE_MAX;
             GenerateCloud(&Clouds[index]);
         }
     }
 
-    PlaneMovement++;
+    PlaneMovement += MovementSpeed;
     ElapsedUpdates++;
 
     if (PlaneMovement >= BG_MOVEMENT_RANGE)
@@ -287,7 +451,7 @@ void BackgroundUdpate()
         ElapsedUpdates = 0;
 }
 
-void BackgroundSetColorShift(BackgroundColorShift color)
+void BackgroundSetColorShift(const BackgroundColorShift color)
 {
     CurrentColorMode = color;
 }

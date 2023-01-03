@@ -61,7 +61,6 @@ typedef struct
     bool IsControllable;
 } PlayerStateData;
 
-
 /** @brief Player entity data
  */
 typedef struct

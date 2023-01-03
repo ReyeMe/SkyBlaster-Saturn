@@ -13,7 +13,7 @@
 // Placement and movement
 // -------------------------------------
 
-#define BG_MOVEMENT_RANGE (64)
+#define BG_MOVEMENT_RANGE (64 << 16)
 #define BG_PLACEMENT_DEPTH (-24)
 #define BG_PLACEMENT_X_ANG (-5)
 #define BG_PLACEMENT_Y_ANG (180)
@@ -33,10 +33,17 @@
 #define BG_CLOUD_AREA2_Y_POS (-6415200)
 #define BG_CLOUD_AREA1_Y_POS (6415200)
 #define BG_CLOUD_AREA_Z_RANGE JO_FIXED_4
-#define BG_CLOUDS_MAX (20)
-#define BG_UPDATE_MAX (45)
+#define BG_CLOUDS_MAX (10)
+#define BG_UPDATE_MAX (60)
 #define BG_UPDATE_RANGE (30)
-#define BG_UPDATE_MIN (15)
+#define BG_UPDATE_MIN (25)
+
+// -------------------------------------
+// Sky Color mix
+// -------------------------------------
+
+#define BG_MIX_MAX (31)
+#define BG_MIX_MIN (0)
 
 // -------------------------------------
 // Sky shades
@@ -45,30 +52,37 @@
 #define BG_SKY_BLUE_R (31)
 #define BG_SKY_BLUE_G (64)
 #define BG_SKY_BLUE_B (255)
+#define BG_SKY_BLUE_A (31)
 
 #define BG_SKY_GREEN_R (38)
 #define BG_SKY_GREEN_G (127)
 #define BG_SKY_GREEN_B (0)
+#define BG_SKY_GREEN_A (31)
 
 #define BG_SKY_ORANGE_R (255)
 #define BG_SKY_ORANGE_G (125)
 #define BG_SKY_ORANGE_B (0)
+#define BG_SKY_ORANGE_A (31)
 
 #define BG_SKY_RED_R (200)
 #define BG_SKY_RED_G (31)
 #define BG_SKY_RED_B (64)
+#define BG_SKY_RED_A (26)
 
 #define BG_SKY_PURPLE_R (131)
 #define BG_SKY_PURPLE_G (0)
 #define BG_SKY_PURPLE_B (200)
+#define BG_SKY_PURPLE_A (24)
 
-#define BG_SKY_BLACK_R (0)
-#define BG_SKY_BLACK_G (0)
-#define BG_SKY_BLACK_B (0)
+#define BG_SKY_BLACK_R (20)
+#define BG_SKY_BLACK_G (40)
+#define BG_SKY_BLACK_B (60)
+#define BG_SKY_BLACK_A (24)
 
 #define BG_SKY_CRIMSON_R (120)
 #define BG_SKY_CRIMSON_G (8)
 #define BG_SKY_CRIMSON_B (46)
+#define BG_SKY_CRIMSON_A (18)
 
 /** @brief Sky color shift mode
  */
@@ -81,13 +95,13 @@ typedef enum
     BackgroundGreenSky,             // track 5 - forest
 
     /* Orange sky shade */
-    BackgroundOrangeSky,            // track 6
+    BackgroundOrangeSky,            // track 6 - desert
 
     /* Red sky shade */
     BackgroundRedSky,               // track 7 - corrupted
 
     /* Purple sky shade */
-    BackgroundPurpleSky,            // track 8
+    BackgroundPurpleSky,            // track 8 - portal
 
     /* Black sky */
     BackgroundBlackSky,             // track 9 - edge
@@ -117,6 +131,6 @@ void BackgroundUdpate();
 /** @brief Set color shift applied to the level
  *  @param color Requested color shift
  */
-void BackgroundSetColorShift(BackgroundColorShift color);
+void BackgroundSetColorShift(const BackgroundColorShift color);
 
 #endif

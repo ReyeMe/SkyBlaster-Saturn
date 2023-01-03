@@ -33,7 +33,7 @@ static void BulletListUpdateInternal(jo_node *node, BulletListCallback callback,
     if (BulletUpdate(bullet))
     {
         // remove bullet
-        FreeSpriteQuadData(&bullet->Mesh);
+        FreeSpriteQuadData(&bullet->Mesh); 
         jo_free(bullet);
 
         if (isPlayer)

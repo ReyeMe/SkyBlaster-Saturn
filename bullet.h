@@ -9,32 +9,31 @@
 #define BULLET_POS_Z JO_FIXED_1
 #define BULLET_SPEED (400000)
 
-/** @brief Bullet types
+/** @brief Bullet type
  */
-typedef enum
+typedef enum BulletType
 {
-    /* Bullet shot by player */
-    BulletTypePlayer = 0,
-
-    /* Small bullet shot by enemy */
-    BulletTypeSmall = 1,
-
-    /* Big bullet shot by enemy */
-    BulletTypeBig = 2
-} BulletTypes;
+    BulletPlayerSimple = 0,
+    BulletNpcSimple = 1,
+    BulletHoming = 2
+} BulletType;
 
 /** @brief Bullet entity data
  */
-typedef struct
+typedef struct _Bullet Bullet;
+typedef struct _Bullet
 {
     /* Bullet position */
     jo_pos2D_fixed Pos;
 
+    /* Bullet position */
+    jo_pos2D_fixed Target;
+
     /* Bullet velocity */
     jo_vector2_fixed Velocity;
 
-    /* Type of the bullet */
-    BulletTypes Type;
+    /* Bullet sprite */
+    BulletType Type;
 
     /* Mesh of the bullet */
     jo_3d_quad Mesh;
@@ -58,6 +57,6 @@ void BulletDraw(Bullet *bullet);
  *  @param bullet Bullet data
  *  @return True if bullet is to be destroyed
  */
-bool BulletUpdate(Bullet *Bullet);
+bool BulletUpdate(Bullet *bullet);
 
 #endif
