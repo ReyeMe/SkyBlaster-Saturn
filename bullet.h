@@ -37,6 +37,9 @@ typedef struct _Bullet
 
     /* Mesh of the bullet */
     jo_3d_quad Mesh;
+
+    /* Is bullet alive */
+    bool Alive;
 } Bullet;
 
 /** @brief Initialize bullet mesh

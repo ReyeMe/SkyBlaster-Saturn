@@ -8,25 +8,25 @@
 typedef struct
 {
     /* current explosion location */
-    jo_pos3D_fixed Pos;
+    jo_pos2D_fixed Pos;
 
-    /* Current explosion life time */
-    int LifeTime;
+    /* Particle life time */
+    unsigned char LifeTime;
 
     /* Current animation frame */
-    int Frame;
+    unsigned char Frame;
 
     /* Explosion quad */
     jo_3d_quad Mesh;
 } NpcExplosion;
 
-/** @brief Initialize explosion particles
- */
-void ExplosionsInitialize();
-
 /** @brief Remove all explosion particles
  */
 void ExplosionsClearAll();
+
+/** @brief Initialize explosion particles
+ */
+void ExplosionsInitialize();
 
 /** @brief Update explosion particles
  */
@@ -35,7 +35,7 @@ void ExplosionsUpdate();
 /** @brief Create explosion particle
  *  @param pos Location to create at
  */
-void ExplosionsSpawn(const jo_pos3D_fixed *pos);
+void ExplosionsSpawn(const jo_pos2D_fixed *pos);
 
 /** @brief Draw explosion particles
  */

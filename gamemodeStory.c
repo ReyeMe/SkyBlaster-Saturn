@@ -348,7 +348,7 @@ static void Stage1(const GamemodeData * data)
 
             for (int i = 0; i < spawnCount; i++)
             {
-                jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
+                jo_pos2D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4)};
 
                 int toSpawn = StageTickCount < 900 ? (int)NpcDart : (StageTickCount < 1950 ? (jo_random(2) - 1) : (jo_random(3) - 1));
 
@@ -387,7 +387,7 @@ static void Stage2(const GamemodeData * data)
 
             for (int i = 0; i < spawnCount; i++)
             {
-                jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
+                jo_pos2D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4)};
 
                 int toSpawn = StageTickCount < 1550 ? (jo_random(2) - 1) : (jo_random(4) - 1);
 
@@ -431,7 +431,7 @@ static void Stage4(const GamemodeData * data)
 
             for (int i = 0; i < spawnCount; i++)
             {
-                jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
+                jo_pos2D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4)};
 
                 int toSpawn = jo_random(5) - 1;
 

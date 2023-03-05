@@ -196,11 +196,9 @@ void PlayerInititalize(Player *player)
 {
     player->Velocity.x = 0;
     player->Velocity.y = 0;
-    player->Velocity.z = 0;
 
     player->Pos.x = PLAYER_SPAWN_X + JO_FIXED_32;
     player->Pos.y = PLAYER_SPAWN_Y;
-    player->Pos.z = 0;
 
     player->TiltAngle = 0;
     player->PitchAngle = 0;

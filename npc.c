@@ -15,15 +15,13 @@
 // Npc behaviours
 // -------------------------------------
 
-Bullet *NpcSimpleBehaviour(Npc *npc)
+void NpcSimpleBehaviour(Npc *npc)
 {
     npc->Pos.x += npc->Velocity.x;
     npc->Pos.y += npc->Velocity.y;
-    npc->Pos.z += npc->Velocity.z;
-    return JO_NULL;
 }
 
-Bullet *NpcDartBehaviour(Npc *npc)
+void NpcDartBehaviour(Npc *npc)
 {
     jo_fixed velocity = npc->Velocity.x;
 
@@ -38,33 +36,20 @@ Bullet *NpcDartBehaviour(Npc *npc)
 
     npc->Pos.x += velocity;
     npc->Pos.y += npc->Velocity.y;
-    npc->Pos.z += npc->Velocity.z;
-    
-    return JO_NULL;
 }
 
-Bullet *NpcGruntBehaviour(Npc *npc)
+void NpcGruntBehaviour(Npc *npc)
 {
     NpcSimpleBehaviour(npc);
     
     if (npc->LifeTime % 60 == 0)
     {
-        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-        bullet->Pos.x = npc->Pos.x;
-        bullet->Pos.y = npc->Pos.y;
-        bullet->Type = BulletNpcSimple;
-        bullet->Velocity.x = BULLET_SPEED >> 1;
-        bullet->Velocity.y = 0;
-        BulletInitializeMesh(bullet);
-        return bullet;
-    }
-    else
-    {
-        return JO_NULL;
+        jo_vector2_fixed velocity = { BULLET_SPEED >> 1, 0 };
+        BulletListAdd(&npc->Pos, JO_NULL, &velocity, BulletNpcSimple);
     }
 }
 
-Bullet *NpcHomingBehaviour(Npc *npc, Player *player, int playerCount)
+void NpcHomingBehaviour(Npc *npc, Player *player, int playerCount)
 {
     NpcDartBehaviour(npc);
     
@@ -89,44 +74,22 @@ Bullet *NpcHomingBehaviour(Npc *npc, Player *player, int playerCount)
 
         if (closest != JO_NULL)
         {
-            Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-            bullet->Pos.x = npc->Pos.x;
-            bullet->Pos.y = npc->Pos.y;
-            bullet->Target.x = closest->Pos.x;
-            bullet->Target.y = closest->Pos.y;
-            bullet->Type = BulletHoming;
-            bullet->Velocity.x = BULLET_SPEED >> 1;
-            bullet->Velocity.y = 0;
-            BulletInitializeMesh(bullet);
-
+            jo_vector2_fixed velocity = { BULLET_SPEED >> 1, 0 };
+            BulletListAdd(&npc->Pos, &closest->Pos, &velocity, BulletHoming);
             npc->LifeTime = 250;
-            return bullet;
         }
     }
-    
-    return JO_NULL;
 }
 
-Bullet *NpcSinusBehaviour(Npc *npc)
+void NpcSinusBehaviour(Npc *npc)
 {
     npc->Pos.x += npc->Velocity.x;
     npc->Pos.y += jo_sin(npc->LifeTime) >> 1;
-    npc->Pos.z += npc->Velocity.z;
     
     if (npc->LifeTime % 80 == 0)
     {
-        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-        bullet->Pos.x = npc->Pos.x;
-        bullet->Pos.y = npc->Pos.y;
-        bullet->Type = BulletNpcSimple;
-        bullet->Velocity.x = BULLET_SPEED >> 1;
-        bullet->Velocity.y = 0;
-        BulletInitializeMesh(bullet);
-        return bullet;
-    }
-    else
-    {
-        return JO_NULL;
+        jo_vector2_fixed velocity = { BULLET_SPEED >> 1, 0 };
+        BulletListAdd(&npc->Pos, JO_NULL, &velocity, BulletNpcSimple);
     }
 }
 
@@ -213,24 +176,23 @@ static jo_fixed GetColliderSize(const Npc *npc)
  */
 static bool CheckNpcAgainstBullets(const Npc *npc, jo_pos2D_fixed * hitLocation)
 {
-    jo_node *tmp;
     jo_fixed colliderSize = GetColliderSize(npc);
-    jo_list *bullets = BulletListGet(true);
+    Bullet *bullets = BulletListGet();
 
-    for (tmp = bullets->first; tmp != JO_NULL; tmp = tmp->next)
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
     {
-        Bullet *bullet = (Bullet *)tmp->data.ptr;
-
-        jo_vector_fixed fromNpc = {{bullet->Pos.x - npc->Pos.x, bullet->Pos.y - npc->Pos.y, 0}};
-        jo_fixed distance = ToolsFastVectorLength(&fromNpc);
-    
-        if (distance < colliderSize)
+        if (bullets[bullet].Alive && bullets[bullet].Type == BulletPlayerSimple)
         {
-            hitLocation->x = bullet->Pos.x - npc->Pos.x;
-            hitLocation->y = bullet->Pos.y - npc->Pos.y;
-            FreeSpriteQuadData(&bullet->Mesh);
-            jo_list_free_and_remove(bullets, tmp);
-            return true;
+            jo_vector_fixed fromNpc = {{bullets[bullet].Pos.x - npc->Pos.x, bullets[bullet].Pos.y - npc->Pos.y, 0}};
+            jo_fixed distance = ToolsFastVectorLength(&fromNpc);
+
+            if (distance < colliderSize)
+            {
+                hitLocation->x = bullets[bullet].Pos.x - npc->Pos.x;
+                hitLocation->y = bullets[bullet].Pos.y - npc->Pos.y;
+                bullets[bullet].Alive = false;
+                return true;
+            }
         }
     }
 
@@ -259,37 +221,30 @@ static bool CheckNpcAgainstPlayer(const Npc *npc, const Player *player)
  */
 static void UpdateNpcWithBehaviour(Npc *npc, Player *player, int playerCount)
 {
-    Bullet *bullet = JO_NULL;
-
     switch (npc->Type)
     {
         case NpcLightShip:
-            bullet = NpcGruntBehaviour(npc);
+            NpcGruntBehaviour(npc);
             break;
 
         case NpcMine:
-            bullet = NpcSimpleBehaviour(npc);
+            NpcSimpleBehaviour(npc);
             break;
 
         case NpcLightShipSinus:
-            bullet = NpcSinusBehaviour(npc);
+            NpcSinusBehaviour(npc);
             break;
 
         case NpcDart:
-            bullet = NpcDartBehaviour(npc);
+            NpcDartBehaviour(npc);
             break;
 
         case NpcRocketShip:
-            bullet = NpcHomingBehaviour(npc, player, playerCount);
+            NpcHomingBehaviour(npc, player, playerCount);
             break;
 
         default:
             break;
-    }
-
-    if (bullet != JO_NULL)
-    {
-        BulletListAdd(bullet, false);
     }
 }
 
@@ -306,22 +261,21 @@ void NpcInitialize()
     TmfLoadMesh(&NpcMeshes[2], "ENEMY02.TMF", JO_ROOT_DIR);
 }
 
-Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos)
+Npc *NpcCreate(const NpcTypes type, const jo_pos2D_fixed *pos)
 {
     Npc *npc = (Npc *)jo_malloc(sizeof(Npc));
 
     npc->Health = type + 1;
     npc->LastHit.x = -JO_FIXED_360;
     npc->LastHit.x = -JO_FIXED_360;
+    npc->LifeTime = 0;
 
     npc->Type = type;
     npc->Pos.x = pos->x;
     npc->Pos.y = pos->y;
-    npc->Pos.z = pos->z;
 
     npc->Velocity.x = 0;
     npc->Velocity.y = 0;
-    npc->Velocity.z = 0;
 
     switch (type)
     {
@@ -357,7 +311,7 @@ int NpcDestroyAll()
     return ListClearInternal(&Npcs, true);
 }
 
-int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
+int NpcDestroyAllInRange(const jo_pos2D_fixed *pos, const jo_fixed range)
 {
     int score = 0;
     jo_node *tmp;
@@ -462,7 +416,7 @@ void NpcDraw()
 
         jo_3d_push_matrix();
         {
-            jo_3d_translate_matrix_fixed(npc->Pos.x, npc->Pos.y, npc->Pos.z);
+            jo_3d_translate_matrix_fixed(npc->Pos.x, npc->Pos.y, 0);
             TmfDraw(&NpcMeshes[modelNumber]);
         }
         jo_3d_pop_matrix();
@@ -470,7 +424,7 @@ void NpcDraw()
         // Enemy was hit
         if (npc->LastHit.x != -JO_FIXED_360 && npc->LastHitTime < 25)
         {
-            FIXED point[XYZ] = { npc->Pos.x + npc->LastHit.x, npc->Pos.y + npc->LastHit.y, npc->Pos.z };
+            FIXED point[XYZ] = { npc->Pos.x + npc->LastHit.x, npc->Pos.y + npc->LastHit.y, 0 };
             FIXED projected[XY];
             slConvert3Dto2DFX(point, projected);
   

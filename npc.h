@@ -22,10 +22,10 @@ typedef struct _Npc Npc;
 typedef struct _Npc
 {
     /* Level coordinates */
-    jo_pos3D_fixed Pos;
+    jo_pos2D_fixed Pos;
 
     /* Movement velocity */
-    jo_vector_fixed Velocity;
+    jo_vector2_fixed Velocity;
 
     /* Where this enemy got hit last */
     jo_pos2D_fixed LastHit;
@@ -52,7 +52,7 @@ void NpcInitialize();
  *  @param pos Npc position
  *  @return Created npc data
  */
-Npc *NpcCreate(const NpcTypes type, const jo_pos3D_fixed *pos);
+Npc *NpcCreate(const NpcTypes type, const jo_pos2D_fixed *pos);
 
 /** @brief Clear all NPCs
  */
@@ -68,7 +68,7 @@ int NpcDestroyAll();
  *  @param range Destruction range
  *  @return How much score player gained
  */
-int NpcDestroyAllInRange(const jo_pos3D_fixed *pos, const jo_fixed range);
+int NpcDestroyAllInRange(const jo_pos2D_fixed *pos, const jo_fixed range);
 
 /** @brief Update all available NPCs (will do tests against bullets and level bounds)
  *  @param player Player data

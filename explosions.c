@@ -3,123 +3,96 @@
 #include "tools.h"
 #include "explosions.h"
 
-// -------------------------------------
-// Internal
-// -------------------------------------
+#define EXPLOSION_COUNT (50)
 
-/* List of all current explosion sprites */
-static jo_list Explosions;
+static int ExplosionSpriteStart;
+static int ExplosionSound;
+static NpcExplosion Explosions[EXPLOSION_COUNT];
 
-/* Explosion sound */
-static short ExplosionSound;
-
-/* Index of first explosion sprite */
-static int ExplosionSpriteStartIndex;
-
-/** @brief Clear Explosion list
- */
-static void ListClearInternal(jo_list *list)
-{
-    jo_node *tmp;
-
-    for (tmp = list->first; tmp != JO_NULL; tmp = tmp->next)
-    {
-        void *data = tmp->data.ptr;
-
-        FreeSpriteQuadData(&((NpcExplosion*)data)->Mesh);
-        jo_free(data);
-        jo_list_remove(list, tmp);
-    }
-}
 // -------------------------------------
 // Public
 // -------------------------------------
 
-void ExplosionsInitialize()
+void ExplosionsClearAll()
 {
-    jo_list_init(&Explosions);
-    ExplosionSound = load_16bit_pcm((Sint8 *)"EXP.PCM", 15360);
-
-    for (int sprite = 0; sprite < NPC_EXP_FRM_CNT; sprite++)
+    for (int explosion = 0; explosion < EXPLOSION_COUNT; explosion++)
     {
-        char filename[9];
-        sprintf(filename, "EXP%d.TGA", sprite + 1);
-        int spriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, filename, JO_COLOR_RGB(255, 0, 255));
-
-        if (sprite == 0)
-        {
-            ExplosionSpriteStartIndex = spriteIndex;
-        }
+        Explosions[explosion].LifeTime = 0xFF;
+        Explosions[explosion].Frame = 0xFF;
     }
 }
 
-void ExplosionsClearAll()
+void ExplosionsInitialize()
 {
-    ListClearInternal(&Explosions);
+    ExplosionSound = load_16bit_pcm((Sint8 *)"EXP.PCM", 15360);
+
+    char filename[9];
+
+    for (int sprite = 0; sprite < NPC_EXP_FRM_CNT; sprite++)
+    {
+        sprintf(filename, "EXP%d.TGA", sprite + 1);
+        int spriteIndex = jo_sprite_add_tga(JO_ROOT_DIR, filename, JO_COLOR_RGB(255, 0, 255));
+
+        if (sprite == 0) ExplosionSpriteStart = spriteIndex;
+    }
+    
+    for (int explosion = 0; explosion < EXPLOSION_COUNT; explosion++)
+    {
+    	CreateSpriteQuad(&Explosions[explosion].Mesh, ExplosionSpriteStart);
+    }
+
+    ExplosionsClearAll();
 }
 
 void ExplosionsUpdate()
 {
-    jo_node *tmp;
-
-    for (tmp = Explosions.first; tmp != JO_NULL; tmp = tmp->next)
+    for (int explosion = 0; explosion < EXPLOSION_COUNT; explosion++)
     {
-        NpcExplosion *explosion = (NpcExplosion *)tmp->data.ptr;
+        if (Explosions[explosion].Frame < NPC_EXP_FRM_CNT)
+        {
+            if (Explosions[explosion].LifeTime % 2 == 0)
+            {
+                Explosions[explosion].Frame++;
+            }
 
-        if (explosion->LifeTime % 2 == 0)
-        {
-            explosion->Frame++;
-        }
-
-        if (explosion->Frame >= NPC_EXP_FRM_CNT)
-        {
-            FreeSpriteQuadData(&explosion->Mesh);
-            jo_list_free_and_remove(&Explosions, tmp);
-        }
-        else
-        {
-            explosion->Pos.x += JO_FIXED_1_DIV_2;
-            explosion->LifeTime++;
+            Explosions[explosion].LifeTime++;
+            Explosions[explosion].Pos.x += JO_FIXED_1_DIV_2;
         }
     }
 }
 
-void ExplosionsSpawn(const jo_pos3D_fixed *pos)
+void ExplosionsSpawn(const jo_pos2D_fixed *pos)
 {
-    NpcExplosion *explosion = (NpcExplosion *)jo_malloc_with_behaviour(sizeof(NpcExplosion), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-
-    if (explosion != JO_NULL)
+    for (int explosion = 0; explosion < EXPLOSION_COUNT; explosion++)
     {
-        explosion->Pos.x = pos->x;
-        explosion->Pos.y = pos->y;
-        explosion->Pos.z = pos->z;
-        explosion->LifeTime = 0;
-        CreateSpriteQuad(&explosion->Mesh, ExplosionSpriteStartIndex);
-    
-        jo_list_add_ptr(&Explosions, explosion);
+        if (Explosions[explosion].Frame >= NPC_EXP_FRM_CNT)
+        {
+            // Make particle alive again
+            Explosions[explosion].Frame = 0;
+            Explosions[explosion].LifeTime = 0;
+            Explosions[explosion].Pos.x = pos->x;
+            Explosions[explosion].Pos.y = pos->y;
+            
+            // Play sound
+            pcm_play(ExplosionSound, PCM_PROTECTED, 6);
+            return;
+        }
     }
-
-    // Play sound
-    pcm_play(ExplosionSound, PCM_PROTECTED, 6);
 }
 
 void ExplosionsDraw()
 {
-    jo_node *tmp;
-
-    for (tmp = Explosions.first; tmp != JO_NULL; tmp = tmp->next)
+    for (int explosion = 0; explosion < EXPLOSION_COUNT; explosion++)
     {
-        NpcExplosion *explosion = (NpcExplosion *)tmp->data.ptr;
-
-        jo_3d_push_matrix();
+        if (Explosions[explosion].Frame < NPC_EXP_FRM_CNT)
         {
-            jo_3d_translate_matrix_fixed(explosion->Pos.x, explosion->Pos.y, explosion->Pos.z);
-
-            int frame = JO_MAX(explosion->Frame, 0);
-            frame = JO_MIN(frame, NPC_EXP_FRM_CNT);
-            jo_3d_set_texture(&explosion->Mesh, ExplosionSpriteStartIndex + frame);
-            jo_3d_draw(&explosion->Mesh);
+            jo_3d_push_matrix();
+            {
+                jo_3d_translate_matrix_fixed(Explosions[explosion].Pos.x, Explosions[explosion].Pos.y, 0);
+                jo_3d_set_texture(&Explosions[explosion].Mesh, ExplosionSpriteStart + Explosions[explosion].Frame);
+                jo_3d_draw(&Explosions[explosion].Mesh);
+            }
+            jo_3d_pop_matrix();
         }
-        jo_3d_pop_matrix();
     }
 }

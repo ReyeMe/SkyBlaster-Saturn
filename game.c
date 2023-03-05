@@ -94,12 +94,9 @@ static void PlayerHit(Player * player)
             int adder = bomb % 2 == 0 ? JO_FIXED_PI_DIV_2 : 0;
             int angle = (jo_random(6)<<14);
 
-            jo_vector_fixed velocity = {
-                {
-                    -jo_fixed_sin(adder + angle) << 2,
-                    -jo_fixed_cos(adder + angle) << 2,
-                    0
-                }
+            jo_vector2_fixed velocity = {
+                -jo_fixed_sin(adder + angle) << 2,
+                -jo_fixed_cos(adder + angle) << 2
             };
 
             PickupCreateWithVelocity(&player->Pos, &velocity, PickupTypeBomb);
@@ -110,12 +107,9 @@ static void PlayerHit(Player * player)
         {
             int angle = (jo_random(12)<<14);
 
-            jo_vector_fixed velocity = {
-                {
-                    -jo_fixed_sin(angle) << 2,
-                    -jo_fixed_cos(angle) << 2,
-                    0
-                }
+            jo_vector2_fixed velocity = {
+                -jo_fixed_sin(angle) << 2,
+                -jo_fixed_cos(angle) << 2
             };
 
             PickupCreateWithVelocity(&player->Pos, &velocity, PickupTypeGun);
@@ -166,14 +160,8 @@ static void PlayerShoot(Player * player)
 
     if (player->GunLevel == 0)
     {
-        Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-        bullet->Pos.x = player->Pos.x;
-        bullet->Pos.y = player->Pos.y;
-        bullet->Type = BulletPlayerSimple;
-        bullet->Velocity.x = -BULLET_SPEED;
-        bullet->Velocity.y = 0;
-        BulletInitializeMesh(bullet);
-        BulletListAdd(bullet, true);
+        jo_vector2_fixed velocity = { -BULLET_SPEED, 0 };
+        BulletListAdd(&player->Pos, JO_NULL, &velocity, BulletPlayerSimple);
     }
     else if (player->GunLevel > 0)
     {
@@ -181,15 +169,9 @@ static void PlayerShoot(Player * player)
 
         for (int i = 0; i < 2; i++)
         {
-            Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-            bullet->Pos.x = player->Pos.x;
-            bullet->Pos.y = player->Pos.y + offset;
-            bullet->Type = BulletPlayerSimple;
-            bullet->Velocity.x = -BULLET_SPEED;
-            bullet->Velocity.y = 0;
-            BulletInitializeMesh(bullet);
-            BulletListAdd(bullet, true);
-
+            jo_vector2_fixed velocity = { -BULLET_SPEED, 0 };
+            jo_pos2D_fixed pos = { player->Pos.x, player->Pos.y + offset };
+            BulletListAdd(&pos, JO_NULL, &velocity, BulletPlayerSimple);
             offset += JO_FIXED_16;
         }
 
@@ -197,14 +179,8 @@ static void PlayerShoot(Player * player)
         {
             for (int i = -1; i < 2; i += 2)
             {
-                Bullet *bullet = jo_malloc_with_behaviour(sizeof(Bullet), JO_MALLOC_TRY_REUSE_SAME_BLOCK_SIZE);
-                bullet->Pos.x = player->Pos.x;
-                bullet->Pos.y = player->Pos.y;
-                bullet->Type = BulletPlayerSimple;
-                bullet->Velocity.x = -(BULLET_SPEED / 2);
-                bullet->Velocity.y = (BULLET_SPEED / 2) * i;
-                BulletInitializeMesh(bullet);
-                BulletListAdd(bullet, true);
+                jo_vector2_fixed velocity = { -(BULLET_SPEED / 2), (BULLET_SPEED / 2) * i };
+                BulletListAdd(&player->Pos, JO_NULL, &velocity, BulletPlayerSimple);
             }
         }
     }

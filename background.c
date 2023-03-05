@@ -411,34 +411,38 @@ void BackgroundDraw()
 void BackgroundUdpate()
 {
     SetLineColors();
-    bool created = false;
+    int firstFree = -1;
 
     for (int index = 0; index < BG_CLOUDS_MAX; index++)
     {
-        if (Clouds[index].Visible && Clouds[index].Pos.x > BG_CLOUD_DESPAWN_AREA_X)
-        {
-            Clouds[index].Visible = false;
-        }
-        else if (Clouds[index].Visible)
+        if (Clouds[index].Visible)
         {
             Clouds[index].Pos.x += Clouds[index].Speed;
-        }
 
-        if ((int)CurrentColorMode < (int)BackgroundBlackSky &&
-            NextSpawnTarget == ElapsedUpdates &&
-            !created && !Clouds[index].Visible)
-        {
-            created = true;
-            NextSpawnTarget = BG_UPDATE_MIN + jo_random(BG_UPDATE_RANGE) - 1;
-
-            if ((int)CurrentColorMode >= (int)BackgroundRedSky)
+            if (Clouds[index].Pos.x > BG_CLOUD_DESPAWN_AREA_X)
             {
-                NextSpawnTarget += BG_UPDATE_MIN * ((int)CurrentColorMode - 1);
+                Clouds[index].Visible = false;
             }
-
-            ElapsedUpdates = BG_UPDATE_MAX;
-            GenerateCloud(&Clouds[index]);
         }
+        else if (firstFree < 0)
+        {
+            firstFree = index;
+        }
+    }
+
+    if ((int)CurrentColorMode < (int)BackgroundBlackSky &&
+        NextSpawnTarget == ElapsedUpdates &&
+        firstFree >= 0)
+    {
+        NextSpawnTarget = BG_UPDATE_MIN + jo_random(BG_UPDATE_RANGE) - 1;
+
+        if ((int)CurrentColorMode >= (int)BackgroundRedSky)
+        {
+            NextSpawnTarget += BG_UPDATE_MIN * ((int)CurrentColorMode - 1);
+        }
+
+        ElapsedUpdates = BG_UPDATE_MAX;
+        GenerateCloud(&Clouds[firstFree]);
     }
 
     PlaneMovement += MovementSpeed;

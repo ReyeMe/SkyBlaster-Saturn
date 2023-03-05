@@ -100,7 +100,7 @@ void PickupInitialize()
     jo_sprite_add_tga(JO_ROOT_DIR, "BMB.TGA", JO_COLOR_Transparent);
 }
 
-void PickupCreate(const jo_pos3D_fixed *pos, const PickupType type)
+void PickupCreate(const jo_pos2D_fixed *pos, const PickupType type)
 {
     Pickup *pickup = (Pickup *)jo_malloc(sizeof(Pickup));
     pickup->Pos.x = pos->x;
@@ -112,7 +112,7 @@ void PickupCreate(const jo_pos3D_fixed *pos, const PickupType type)
     jo_list_add_ptr(&Pickups, pickup);
 }
 
-void PickupCreateWithVelocity(const jo_pos3D_fixed *pos, jo_vector_fixed *velocity, const PickupType type)
+void PickupCreateWithVelocity(const jo_pos2D_fixed *pos, jo_vector2_fixed *velocity, const PickupType type)
 {
     Pickup *pickup = (Pickup *)jo_malloc(sizeof(Pickup));
     pickup->Pos.x = pos->x;

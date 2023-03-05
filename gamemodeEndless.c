@@ -61,7 +61,7 @@ GamemodeTickResult GmTickEndless(const GamemodeData * data)
 
         for (int i = 0; i < spawnCount; i++)
         {
-            jo_pos3D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4), 0};
+            jo_pos2D_fixed pos = {NPC_SPAWN_X, jo_int2fixed((jo_random(10) - 5) << 4)};
             int toSpawn = jo_random(5) - 1;
             NpcCreate(JO_MAX(toSpawn, 0), &pos);
 

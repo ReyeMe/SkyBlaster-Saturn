@@ -8,144 +8,108 @@
 // -------------------------------------
 
 /* Bullets shot by player */
-static jo_list PlayerBullets;
-
-/* Bullets shot by player */
-static jo_list EnemyBullets;
-
-/** @brief Draw bullet from list
- *  @param node Bullet instance
- */
-static void BulletListDrawInternal(jo_node *node)
-{
-    BulletDraw((Bullet *)node->data.ptr);
-}
-
-/** @brief Update bullet from list
- *  @param node Bullet instance
- *  @param callback Callback after update
- *  @param isPlayer Is parent player?
- */
-static void BulletListUpdateInternal(jo_node *node, BulletListCallback callback, bool isPlayer)
-{
-    Bullet *bullet = (Bullet *)node->data.ptr;
-
-    if (BulletUpdate(bullet))
-    {
-        // remove bullet
-        FreeSpriteQuadData(&bullet->Mesh); 
-        jo_free(bullet);
-
-        if (isPlayer)
-        {
-            jo_list_remove(&PlayerBullets, node);
-        }
-        else
-        {
-            jo_list_remove(&EnemyBullets, node);
-        }
-    }
-    else if (callback != JO_NULL)
-    {
-        callback(bullet, isPlayer);
-    }
-}
-
-/** @brief Clear bullet list
- *  @param list Pointer to list to clear
- */
-static void BulletListClearInternal(jo_list *list)
-{
-    jo_node *tmp;
-
-    for (tmp = list->first; tmp != JO_NULL; tmp = tmp->next)
-    {
-        Bullet *bullet = (Bullet *)tmp->data.ptr;
-        FreeSpriteQuadData(&bullet->Mesh);
-        jo_free(bullet);
-        jo_list_remove(list, tmp);
-    }
-}
+static Bullet Bullets[BULLET_COUNT];
 
 // -------------------------------------
 // Public
 // -------------------------------------
 
+Bullet * BulletListGet()
+{
+    return Bullets;
+}
+
 void BulletListInitialize()
 {
-    jo_list_init(&PlayerBullets);
-    jo_list_init(&EnemyBullets);
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
+    {
+        Bullets[bullet].Alive = false;
+        BulletInitializeMesh(&Bullets[bullet]);
+    }
 }
 
 void BulletListDraw()
 {
-    jo_list_foreach(&PlayerBullets, BulletListDrawInternal);
-    jo_list_foreach(&EnemyBullets, BulletListDrawInternal);
-}
-
-jo_list *BulletListGet(bool playerList)
-{
-    if (playerList)
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
     {
-        return &PlayerBullets;
-    }
-    else
-    {
-        return &EnemyBullets;
+        if (Bullets[bullet].Alive)
+        {
+            BulletDraw(&Bullets[bullet]);
+        }
     }
 }
 
 void BulletListUpdate(BulletListCallback callback)
 {
-    jo_node *tmp;
-
-    for (tmp = PlayerBullets.first; tmp != JO_NULL; tmp = tmp->next)
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
     {
-        BulletListUpdateInternal(tmp, callback, true);
-    }
-
-    for (tmp = EnemyBullets.first; tmp != JO_NULL; tmp = tmp->next)
-    {
-        BulletListUpdateInternal(tmp, callback, false);
+        if (Bullets[bullet].Alive)
+        {
+            if (BulletUpdate(&Bullets[bullet]))
+            {
+                Bullets[bullet].Alive = false;
+            }
+            else if (callback != JO_NULL)
+            {
+                callback(&Bullets[bullet], Bullets[bullet].Type == BulletPlayerSimple);
+            }
+        }
     }
 }
 
 void BulletListClear(bool onlyEnemy)
 {
-    if (!onlyEnemy)
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
     {
-        BulletListClearInternal(&PlayerBullets);
-    }
-
-    BulletListClearInternal(&EnemyBullets);
-}
-
-void BulletListClearEnemyBulletsInRange(const jo_pos3D_fixed *pos, const jo_fixed range)
-{
-    jo_node *node;
-
-    for (node = EnemyBullets.first; node != JO_NULL; node = node->next)
-    {
-        Bullet *bullet = (Bullet *)node->data.ptr;
-        jo_vector_fixed fromBullet = {{pos->x - bullet->Pos.x, pos->y - bullet->Pos.y, 0}};
-        jo_fixed distance = ToolsFastVectorLength(&fromBullet);
-
-        if (distance < range)
+        if (!onlyEnemy && Bullets[bullet].Type == BulletPlayerSimple)
         {
-            FreeSpriteQuadData(&bullet->Mesh);
-            jo_list_free_and_remove(&EnemyBullets, node);
+            Bullets[bullet].Alive = false;
         }
     }
 }
 
-void BulletListAdd(Bullet *bullet, bool isPlayer)
+void BulletListClearEnemyBulletsInRange(const jo_pos2D_fixed *pos, const jo_fixed range)
 {
-    if (isPlayer)
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
     {
-        jo_list_add_ptr(&PlayerBullets, bullet);
+        if (Bullets[bullet].Alive && Bullets[bullet].Type != BulletPlayerSimple)
+        {
+            jo_vector_fixed fromBullet = {{pos->x - Bullets[bullet].Pos.x, pos->y - Bullets[bullet].Pos.y, 0}};
+            jo_fixed distance = ToolsFastVectorLength(&fromBullet);
+            
+            if (distance < range)
+            {
+                Bullets[bullet].Alive = false;
+            }
+        }
     }
-    else
+}
+
+void BulletListAdd(const jo_pos2D_fixed *pos, const jo_pos2D_fixed *target, const jo_vector2_fixed *velocity, BulletType type)
+{
+    for (int bullet = 0; bullet < BULLET_COUNT; bullet++)
     {
-        jo_list_add_ptr(&EnemyBullets, bullet);
+        if (!Bullets[bullet].Alive)
+        {
+            Bullets[bullet].Pos.x = pos->x;
+            Bullets[bullet].Pos.y = pos->y;
+            Bullets[bullet].Velocity.x = velocity->x;
+            Bullets[bullet].Velocity.y = velocity->y;
+
+            if (target != JO_NULL)
+            {
+                Bullets[bullet].Target.x = target->x;
+                Bullets[bullet].Target.y = target->y;
+            }
+            else
+            {
+                Bullets[bullet].Target.x = pos->x;
+                Bullets[bullet].Target.y = pos->y;
+            }
+
+            Bullets[bullet].Type = type;
+            Bullets[bullet].Alive = true;
+            return;
+        }
     }
 }

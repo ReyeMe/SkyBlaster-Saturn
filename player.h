@@ -66,10 +66,10 @@ typedef struct
 typedef struct
 {
     /* Current player position */
-    jo_pos3D_fixed Pos;
+    jo_pos2D_fixed Pos;
 
     /* Current player velocity */
-    jo_vector_fixed Velocity;
+    jo_vector2_fixed Velocity;
 
     /* Tilt angle when player moves to the side */
     int TiltAngle;

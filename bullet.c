@@ -14,7 +14,7 @@ static void BulletSimpleBehaviour(Bullet * bullet)
 
 static void BulletHomingBehaviour(Bullet * bullet)
 {
-    if (bullet->Target.x == 0xffffffff && bullet->Target.y == 0xffffffff)
+    if ((unsigned int)bullet->Target.x == 0xffffffff && (unsigned int)bullet->Target.y == 0xffffffff)
     {
         BulletSimpleBehaviour(bullet);
         return;
@@ -22,19 +22,19 @@ static void BulletHomingBehaviour(Bullet * bullet)
 
     static jo_fixed max = JO_FIXED_1 >> 4;
     
-    jo_vector_fixed velocity = {
+    jo_vector_fixed velocity = {{
         bullet->Velocity.x,
         bullet->Velocity.y,
         0
-    };
+    }};
 
     jo_fixed velocitiSize = ToolsFastVectorLength(&velocity);
 
-    jo_vector_fixed oldDiff = {
+    jo_vector_fixed oldDiff = {{
         bullet->Target.x - bullet->Pos.x,
         bullet->Target.y - bullet->Pos.y,
         0
-    };
+    }};
 
     jo_fixed length = ToolsFastVectorLength(&oldDiff);
     
@@ -51,11 +51,11 @@ static void BulletHomingBehaviour(Bullet * bullet)
     bullet->Pos.x += bullet->Velocity.x;
     bullet->Pos.y += bullet->Velocity.y;
 
-    jo_vector_fixed diff = {
+    jo_vector_fixed diff = {{
         bullet->Target.x - bullet->Pos.x,
         bullet->Target.y - bullet->Pos.y,
         0
-    };
+    }};
 
     length = ToolsFastVectorLength(&diff);
     diff.x = jo_fixed_div(diff.x, length);
@@ -127,6 +127,8 @@ void BulletDraw(Bullet *bullet)
 
 bool BulletUpdate(Bullet *bullet)
 {
+    jo_3d_set_texture(&bullet->Mesh, FirstSpriteIndex + JO_MIN(bullet->Type, 1));
+
     switch (bullet->Type)
     {
         case BulletPlayerSimple:
