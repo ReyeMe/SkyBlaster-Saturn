@@ -34,6 +34,9 @@ void GmStartEndless(const GamemodeData * data)
     LevelChangeSpentScore = 0;
     SpawnTimer = 0;
     NextSpawn = 40;
+    
+    BackgroundSetColorShift(BackgroundBlueSky);
+    MusicSetCurrent(LVL1_MUSIC, true);
 }
 
 GamemodeTickResult GmTickEndless(const GamemodeData * data)
@@ -43,15 +46,20 @@ GamemodeTickResult GmTickEndless(const GamemodeData * data)
     if (data->CurrentScore - (LevelChangeSpentScore + levelPrice) >=0)
     {
         LevelChangeSpentScore = LevelChangeSpentScore + levelPrice;
+        int color = jo_random((int)BackgroundCrimsonSky) - 1;
+
+        color = JO_MIN(color, (int)BackgroundBlackSky);
+        int music = JO_MIN(color, LVL_MUSIC_CNT - 1);
+        music = JO_MAX(music, 0);
+        
+        BackgroundSetColorShift(color);
+        MusicSetCurrent(LVL1_MUSIC + color, true);
+
         Currentlevel++;
     }
 
     int stage = Currentlevel;
     int stageColor = JO_MIN(stage, (int)BackgroundBlackSky);
-    int music = JO_MIN(stageColor, LVL_MUSIC_CNT - 1);
-    music = JO_MAX(music, 0);
-    BackgroundSetColorShift(stageColor);
-    MusicSetCurrent(LVL1_MUSIC + stageColor, true);
 
     SpawnTimer++;
 

@@ -10,7 +10,6 @@ JO_PSEUDO_SATURN_KAI_SUPPORT = 1
 JO_COMPILE_USING_SGL=1
 JO_GLOBAL_MEMORY_SIZE_FOR_MALLOC = 490000
 JO_NTSC = 1
-JO_DEBUG = 1
 SRCS=$(patsubst ./%,%,$(shell $(CURDIR)/.vscode/compile.bat findSources))
 JO_ENGINE_SRC_DIR=../../jo_engine
 COMPILER_DIR=../../Compiler

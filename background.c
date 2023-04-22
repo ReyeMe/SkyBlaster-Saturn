@@ -19,6 +19,12 @@ typedef struct
     /* Cloud texture number */
     int Texture;
 
+    /* Cloud rotation */
+    unsigned short Rotation;
+
+    /* Cloud rotation speed */
+    unsigned short RotationSpeed;
+
     /* Is cloud visible */
     bool Visible;
 } Cloud;
@@ -49,6 +55,9 @@ static int MovementSpeedCap = JO_FIXED_1;
 
 /* Index of first cloud texture */
 static int CloudTextureStartIndex;
+
+/* Offset for first cloud texture */
+static int CloudTextureStartOffset;
 
 /* List of all clouds to draw at the moment */
 static Cloud Clouds[BG_CLOUDS_MAX];
@@ -92,6 +101,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_PURPLE_G;
             target[Z] = BG_SKY_PURPLE_B;
             targetMix = BG_SKY_PURPLE_A;
+            CloudTextureStartOffset = BG_SKY_PURPLE_OFFSET;
             break;
 
         case BackgroundGreenSky:
@@ -99,6 +109,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_GREEN_G;
             target[Z] = BG_SKY_GREEN_B;
             targetMix = BG_SKY_GREEN_A;
+            CloudTextureStartOffset = BG_SKY_GREEN_OFFSET;
             break;
 
         case BackgroundOrangeSky:
@@ -106,6 +117,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_ORANGE_G;
             target[Z] = BG_SKY_ORANGE_B;
             targetMix = BG_SKY_ORANGE_A;
+            CloudTextureStartOffset = BG_SKY_ORANGE_OFFSET;
             break;
 
         case BackgroundRedSky:
@@ -113,6 +125,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_RED_G;
             target[Z] = BG_SKY_RED_B;
             targetMix = BG_SKY_RED_A;
+            CloudTextureStartOffset = BG_SKY_RED_OFFSET;
             break;
 
         case BackgroundBlackSky:
@@ -120,6 +133,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_BLACK_G;
             target[Z] = BG_SKY_BLACK_B;
             targetMix = BG_SKY_BLACK_A;
+            CloudTextureStartOffset = BG_SKY_BLACK_OFFSET;
             break;
 
         case BackgroundCrimsonSky:
@@ -127,6 +141,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_CRIMSON_G;
             target[Z] = BG_SKY_CRIMSON_B;
             targetMix = BG_SKY_CRIMSON_A;
+            CloudTextureStartOffset = BG_SKY_CRIMSON_OFFSET;
             break;
 
         default:
@@ -134,6 +149,7 @@ static void SetLineColors()
             target[Y] = BG_SKY_BLUE_G;
             target[Z] = BG_SKY_BLUE_B;
             targetMix = BG_SKY_BLUE_A;
+            CloudTextureStartOffset = BG_SKY_BLUE_OFFSET;
             break;
     }
 
@@ -210,13 +226,20 @@ static void GenerateCloud(Cloud *cloud)
 {
     jo_fixed speed = jo_int2fixed(jo_random(jo_fixed2int(BG_CLOUD_SPEED_RANGE)));
     bool top = speed > 70000;
-    cloud->Texture = jo_random(BG_CLOUD_COUNT) - 1;
+    cloud->Texture = CloudTextureStartOffset + (jo_random(BG_CLOUD_COUNT) - 1);
     cloud->Speed = BG_CLOUD_SPEED_MIN + speed;
     cloud->Visible = true;
     cloud->Pos.x = BG_CLOUD_SPAWN_AREA_X;
     cloud->Pos.z = top ? BG_CLOUD_AREA_Z_RANGE : -BG_CLOUD_AREA_Z_RANGE;
     cloud->Pos.y = jo_int2fixed(jo_random(jo_fixed2int(BG_CLOUD_AREA_Y_RANGE)));
+    cloud->Rotation = 0;
+    cloud->RotationSpeed = 0;
 
+    if (CloudTextureStartOffset == 6)
+    {
+        cloud->RotationSpeed = 10;
+    }
+    
     if (top)
     {
         cloud->Pos.y += BG_CLOUD_AREA2_Y_POS;
@@ -356,6 +379,7 @@ void BackgroundInitialize()
     // Reset variables
     PlaneMovement = 0;
     NextSpawnTarget = 0;
+    CloudTextureStartOffset = 0;
 
     for (int index = 0; index < BG_CLOUDS_MAX; index++)
     {
@@ -365,6 +389,12 @@ void BackgroundInitialize()
     CloudTextureStartIndex = jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD1.TGA", JO_COLOR_Purple);
     jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD2.TGA", JO_COLOR_Purple);
     jo_sprite_add_tga(JO_ROOT_DIR, "CLOUD3.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "STAR1.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "STAR2.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "STAR3.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "ROCK1.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "ROCK2.TGA", JO_COLOR_Purple);
+    jo_sprite_add_tga(JO_ROOT_DIR, "ROCK3.TGA", JO_COLOR_Purple);
 
 }
 
@@ -396,10 +426,13 @@ void BackgroundDraw()
                 jo_3d_push_matrix();
                 {
                     jo_3d_translate_matrix_fixed(Clouds[index].Pos.x, Clouds[index].Pos.y, Clouds[index].Pos.z);
+                    jo_3d_rotate_matrix_z(Clouds[index].Rotation);
                     jo_3d_rotate_matrix_x(BG_CLOUD_ANGL);
                     jo_3d_draw_sprite(CloudTextureStartIndex + Clouds[index].Texture);
                 }
                 jo_3d_pop_matrix();
+
+                Clouds[index].Rotation += Clouds[index].RotationSpeed;
             }
         }
         
@@ -430,17 +463,17 @@ void BackgroundUdpate()
         }
     }
 
-    if ((int)CurrentColorMode < (int)BackgroundBlackSky &&
-        NextSpawnTarget == ElapsedUpdates &&
+    if (NextSpawnTarget >= ElapsedUpdates &&
         firstFree >= 0)
     {
         NextSpawnTarget = BG_UPDATE_MIN + jo_random(BG_UPDATE_RANGE) - 1;
 
         if ((int)CurrentColorMode >= (int)BackgroundRedSky)
         {
-            NextSpawnTarget += BG_UPDATE_MIN * ((int)CurrentColorMode - 1);
+            NextSpawnTarget += (BG_UPDATE_MIN >> 1) * ((int)CurrentColorMode - 1);
         }
 
+        NextSpawnTarget = JO_MIN(NextSpawnTarget, BG_UPDATE_MAX);
         ElapsedUpdates = BG_UPDATE_MAX;
         GenerateCloud(&Clouds[firstFree]);
     }
